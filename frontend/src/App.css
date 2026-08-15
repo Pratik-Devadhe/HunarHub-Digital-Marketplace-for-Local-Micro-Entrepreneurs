@@ -1,0 +1,120 @@
+/* App.css - HunarHub Custom Component Overrides */
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+.app-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1700px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 0;
+}
+
+.app-footer {
+  margin-top: 3rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  background: #060911;
+  padding: 2rem 0;
+  text-align: center;
+  color: #94A3B8;
+  font-size: 0.75rem;
+}
+
+.app-footer-inner {
+  width: min(1700px, 100%);
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.app-footer-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.app-footer-brand-name {
+  color: #F59E0B;
+  font-weight: 800;
+}
+
+@media (min-width: 640px) {
+  .app-main {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .app-footer-inner {
+    flex-direction: row;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-main {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+  }
+}
+
+/* Container Layout */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hero Section Gradient Background */
+.hero-gradient {
+  background: radial-gradient(circle at 10% 20%, rgba(245, 158, 11, 0.15) 0%, transparent 40%),
+              radial-gradient(circle at 90% 80%, rgba(255, 107, 74, 0.15) 0%, transparent 40%),
+              linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(8, 12, 20, 0.95));
+}
+
+/* Card Hover Elevation */
+.card-interactive {
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card-interactive:hover {
+  transform: translateY(-4px);
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 12px 30px -5px rgba(245, 158, 11, 0.15);
+}
+
+/* Modal Overlay Backdrop Blur */
+.modal-overlay {
+  background: rgba(4, 7, 13, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Custom Scrollbar for horizontal filter pills */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Form Input Text Area Styling */
+textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+/* Toast Positioning */
+.toast-container {
+  box-shadow: 0 10px 35px -5px rgba(0, 0, 0, 0.6);
+}

@@ -1,0 +1,115 @@
+# ==========================================
+# MERN STACK .gitignore
+# ==========================================
+
+# ---------- Dependencies ----------
+node_modules/
+**/node_modules/
+
+# ---------- Environment Variables ----------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Keep example environment file
+!.env.example
+
+# ---------- Logs ----------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ---------- Runtime / PID files ----------
+*.pid
+*.pid.lock
+pids/
+*.seed
+*.pid
+
+# ---------- React / Vite / Frontend ----------
+dist/
+build/
+.vite/
+
+# ---------- Coverage ----------
+coverage/
+.nyc_output/
+
+# ---------- Cache ----------
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.vscode/.cache/
+
+# ---------- Temporary files ----------
+tmp/
+temp/
+*.tmp
+*.temp
+
+# ---------- Uploads / User Generated Files ----------
+uploads/
+public/uploads/
+
+# ---------- Database / Local Data ----------
+*.sqlite
+*.sqlite3
+*.db
+
+# ---------- MongoDB local files ----------
+data/
+mongodb/
+mongo-data/
+
+# ---------- IDE ----------
+.vscode/
+.idea/
+*.iml
+
+# Keep VS Code settings if you specifically want them
+# !.vscode/settings.json
+
+# ---------- OS Files ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Editor Files ----------
+*.swp
+*.swo
+*~
+*.bak
+
+# ---------- Testing ----------
+test-results/
+playwright-report/
+blob-report/
+
+# ---------- TypeScript ----------
+*.tsbuildinfo
+
+# ---------- Optional package manager files ----------
+# Uncomment only if you DON'T want these committed
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ---------- Vercel ----------
+.vercel/
+
+# ---------- Netlify ----------
+.netlify/
+
+# ---------- Render ----------
+.render/
+
+# ---------- Misc ----------
+*.orig
+*.rej
