@@ -6,16 +6,10 @@ const createServiceRequest = async (req, res) => {
     const {
       entrepreneur_id,
       service_id,
-      category_id,
-      title,
       description,
-      reference_image,
-      budget_min,
-      budget_max,
       requested_date,
       requested_time,
       address,
-      city,
       customer_note
     } = req.body;
 
@@ -23,57 +17,57 @@ const createServiceRequest = async (req, res) => {
       let estPrice = null;
       let targetEntrepreneurId = entrepreneur_id ? id(entrepreneur_id) : null;
       let targetServiceId = service_id ? id(service_id) : null;
-      let targetCategoryId = category_id ? id(category_id) : null;
 
       if (targetServiceId) {
         const svc = await c.query("SELECT * FROM services WHERE id = $1", [targetServiceId]);
         if (svc.rowCount) {
           estPrice = svc.rows[0].price;
           if (!targetEntrepreneurId) targetEntrepreneurId = svc.rows[0].entrepreneur_id;
-          if (!targetCategoryId) targetCategoryId = svc.rows[0].category_id;
         }
       }
 
-      if (!estPrice && budget_max) {
-        estPrice = Number(budget_max);
+      if (!targetServiceId && targetEntrepreneurId) {
+        const svc = await c.query(
+          "SELECT id, price FROM services WHERE entrepreneur_id = $1 AND is_active = true ORDER BY id ASC LIMIT 1",
+          [targetEntrepreneurId]
+        );
+        if (svc.rowCount) {
+          targetServiceId = svc.rows[0].id;
+          estPrice = svc.rows[0].price;
+        }
+      }
+
+      if (!targetEntrepreneurId || !targetServiceId) {
+        throw httpError("Both entrepreneur and service selection are required", 400);
       }
 
       const r = await c.query(
         `INSERT INTO service_requests
-         (customer_id, entrepreneur_id, service_id, category_id, title, description, reference_image,
-          budget_min, budget_max, estimated_price, requested_date, requested_time, address, city, customer_note, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+         (customer_id, entrepreneur_id, service_id, description,
+          estimated_price, requested_date, requested_time, address, customer_note, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PENDING')
          RETURNING *`,
         [
           req.user.id,
           targetEntrepreneurId,
           targetServiceId,
-          targetCategoryId,
-          title || "Service Request",
           description || null,
-          reference_image || null,
-          budget_min ? Number(budget_min) : null,
-          budget_max ? Number(budget_max) : null,
-          estPrice,
+          estPrice ? Number(estPrice) : null,
           requested_date || null,
           requested_time || null,
           address || null,
-          city || null,
-          customer_note || null,
-          targetEntrepreneurId ? 'PENDING' : 'REQUESTED'
+          customer_note || null
         ]
       );
 
-      // If targeted entrepreneur, send notification
-      if (targetEntrepreneurId) {
-        const epUser = await c.query("SELECT user_id FROM entrepreneur_profiles WHERE id = $1", [targetEntrepreneurId]);
-        if (epUser.rowCount) {
-          await c.query(
-            `INSERT INTO notifications (user_id, title, message, type)
-             VALUES ($1, 'New Service Request', $2, 'SERVICE_REQUEST')`,
-            [epUser.rows[0].user_id, `You received a new service request: ${title || 'Service Request'}`]
-          );
-        }
+      // Send notification to entrepreneur
+      const epUser = await c.query("SELECT user_id FROM entrepreneur_profiles WHERE id = $1", [targetEntrepreneurId]);
+      if (epUser.rowCount) {
+        await c.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, 'New Service Request', $2, 'SERVICE_REQUEST')`,
+          [epUser.rows[0].user_id, `You received a new service request #${r.rows[0].id}`]
+        );
       }
 
       return r.rows[0];
@@ -90,13 +84,11 @@ const getMyRequests = async (req, res) => {
     const rows = await withTransaction(async (c) =>
       (await c.query(
         `SELECT sr.*,
-                c.name as category_name,
                 s.title as service_title,
                 ep.business_name,
                 u.full_name as entrepreneur_name,
-                (SELECT COUNT(*)::int FROM quotes q WHERE q.service_request_id = sr.id) as quote_count
+                0 as quote_count
          FROM service_requests sr
-         LEFT JOIN categories c ON c.id = sr.category_id
          LEFT JOIN services s ON s.id = sr.service_id
          LEFT JOIN entrepreneur_profiles ep ON ep.id = sr.entrepreneur_id
          LEFT JOIN users u ON u.id = ep.user_id
@@ -122,20 +114,17 @@ const getReceivedRequests = async (req, res) => {
 
       const r = await c.query(
         `SELECT sr.*,
-                c.name as category_name,
                 s.title as service_title,
                 u.full_name as customer_name,
                 u.phone as customer_phone,
                 u.email as customer_email,
-                q.id as my_quote_id,
-                q.proposed_price as my_proposed_price,
-                q.status as my_quote_status
+                NULL as my_quote_id,
+                NULL as my_proposed_price,
+                NULL as my_quote_status
          FROM service_requests sr
-         LEFT JOIN categories c ON c.id = sr.category_id
          LEFT JOIN services s ON s.id = sr.service_id
          JOIN users u ON u.id = sr.customer_id
-         LEFT JOIN quotes q ON q.service_request_id = sr.id AND q.entrepreneur_id = $1
-         WHERE sr.entrepreneur_id = $1 OR (sr.entrepreneur_id IS NULL AND sr.status IN ('REQUESTED', 'PENDING', 'QUOTED'))
+         WHERE sr.entrepreneur_id = $1
          ORDER BY sr.created_at DESC`,
         [epId]
       );
@@ -154,7 +143,6 @@ const getRequestById = async (req, res) => {
     const row = await withTransaction(async (c) => {
       const r = await c.query(
         `SELECT sr.*,
-                c.name as category_name,
                 s.title as service_title,
                 ep.business_name,
                 ep.user_id as entrepreneur_user_id,
@@ -163,7 +151,6 @@ const getRequestById = async (req, res) => {
                 cu.phone as customer_phone,
                 eu.full_name as entrepreneur_name
          FROM service_requests sr
-         LEFT JOIN categories c ON c.id = sr.category_id
          LEFT JOIN services s ON s.id = sr.service_id
          LEFT JOIN entrepreneur_profiles ep ON ep.id = sr.entrepreneur_id
          JOIN users cu ON cu.id = sr.customer_id
@@ -232,11 +219,11 @@ const transition = async (req, res, nextStatus, allowedFrom, actor) => {
   }
 };
 
-const cancelServiceRequest = (req, res) => transition(req, res, "CANCELLED", ["REQUESTED", "PENDING", "QUOTED", "ACCEPTED", "CONFIRMED"], "customer");
-const acceptServiceRequest = (req, res) => transition(req, res, "ACCEPTED", ["REQUESTED", "PENDING", "QUOTED"], "entrepreneur");
-const rejectServiceRequest = (req, res) => transition(req, res, "REJECTED", ["REQUESTED", "PENDING", "QUOTED"], "entrepreneur");
-const confirmServiceRequest = (req, res) => transition(req, res, "CONFIRMED", ["ACCEPTED"], "entrepreneur");
-const startServiceRequest = (req, res) => transition(req, res, "IN_PROGRESS", ["ACCEPTED", "CONFIRMED"], "entrepreneur");
+const cancelServiceRequest = (req, res) => transition(req, res, "CANCELLED", ["PENDING", "ACCEPTED", "IN_PROGRESS"], "customer");
+const acceptServiceRequest = (req, res) => transition(req, res, "ACCEPTED", ["PENDING"], "entrepreneur");
+const rejectServiceRequest = (req, res) => transition(req, res, "REJECTED", ["PENDING"], "entrepreneur");
+const confirmServiceRequest = (req, res) => transition(req, res, "ACCEPTED", ["PENDING"], "entrepreneur");
+const startServiceRequest = (req, res) => transition(req, res, "IN_PROGRESS", ["ACCEPTED"], "entrepreneur");
 const completeServiceRequest = (req, res) => transition(req, res, "COMPLETED", ["IN_PROGRESS"], "entrepreneur");
 
 module.exports = {

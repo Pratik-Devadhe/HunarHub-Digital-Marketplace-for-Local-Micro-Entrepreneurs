@@ -1,5 +1,7 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const port = process.env.PORT || 5000;
 
 const app = express();
 
@@ -31,5 +33,9 @@ app.use("/messages", require("./routes/messageRoutes"));
 app.use("/admin", require("./routes/adminRoutes"));
 
 app.use((req,res)=>res.status(404).json({success:false,message:"Endpoint not found"}));
+
+app.listen(port, () => {
+    console.log(`Hunarhub Backend server running on port ${port}`);
+});
 
 module.exports=app;

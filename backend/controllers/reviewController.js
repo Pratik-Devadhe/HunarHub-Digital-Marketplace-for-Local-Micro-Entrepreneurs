@@ -26,10 +26,6 @@ const createReview = async (req, res) => {
       product_id,
       service_request_id,
       rating,
-      quality_rating,
-      communication_rating,
-      timeliness_rating,
-      value_rating,
       comment
     } = req.body;
 
@@ -64,8 +60,8 @@ const createReview = async (req, res) => {
 
       const r = await c.query(
         `INSERT INTO reviews
-         (customer_id, entrepreneur_id, product_id, service_request_id, rating, quality_rating, communication_rating, timeliness_rating, value_rating, comment, is_verified_order)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
+         (customer_id, entrepreneur_id, product_id, service_request_id, rating, comment)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING *`,
         [
           req.user.id,
@@ -73,10 +69,6 @@ const createReview = async (req, res) => {
           product_id || null,
           service_request_id || null,
           Number(rating),
-          quality_rating ? Number(quality_rating) : Number(rating),
-          communication_rating ? Number(communication_rating) : Number(rating),
-          timeliness_rating ? Number(timeliness_rating) : Number(rating),
-          value_rating ? Number(value_rating) : Number(rating),
           comment || null
         ]
       );

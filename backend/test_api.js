@@ -39,7 +39,7 @@ async function runTests() {
         const epToken = epLogin.data.token;
 
         // 4. Login Customer
-        const custLogin = await req("/auth/login", "POST", { email: "ananya@gmail.com", password: "password123" });
+        const custLogin = await req("/auth/login", "POST", { email: "ananya@hunarhub.com", password: "password123" });
         console.log("✓ Customer Login:", custLogin.status === 200 && custLogin.data.token ? "PASSED" : "FAILED");
         const custToken = custLogin.data.token;
 

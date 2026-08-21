@@ -31,7 +31,7 @@ const getEntrepreneurs = async (req, res) => {
       where.push("ep.is_available=true");
     }
     if (verified_only === 'true') {
-      where.push("(ep.is_identity_verified=true OR ep.is_artisan_verified=true OR ep.is_business_verified=true)");
+      where.push("ep.verification_status='APPROVED'");
     }
     if (city && city.trim()) {
       where.push(`LOWER(ep.city)=LOWER($${n++})`);
@@ -71,15 +71,15 @@ const getEntrepreneurs = async (req, res) => {
     let orderBy = "ep.average_rating DESC, ep.id DESC";
     if (sort_by === "rating") orderBy = "ep.average_rating DESC, ep.total_reviews DESC";
     else if (sort_by === "nearest" && hasLocation) orderBy = "distance_km ASC NULLS LAST, ep.id DESC";
-    else if (sort_by === "price_low") orderBy = "ep.starting_price ASC";
+    else if (sort_by === "price_low") orderBy = "starting_price ASC NULLS LAST";
     else if (sort_by === "experience") orderBy = "ep.experience_years DESC";
 
     const rows = await withTransaction(async (c) => {
       const queryStr = `
         SELECT ep.id, ep.user_id, u.full_name, u.profile_image, ep.business_name, ep.bio, ep.experience_years,
                ep.city, ep.state, ep.pincode, ep.phone, ep.average_rating, ep.total_reviews, ep.is_available,
-               ep.verification_status, ep.is_identity_verified, ep.is_phone_verified, ep.is_artisan_verified, ep.is_business_verified,
-               ep.starting_price, ep.profile_views,
+               ep.verification_status,
+               (SELECT MIN(s.price) FROM services s WHERE s.entrepreneur_id = ep.id AND s.is_active = true) as starting_price,
                ${selectDistance},
                (SELECT COUNT(*)::int FROM service_requests sr WHERE sr.entrepreneur_id = ep.id AND sr.status = 'COMPLETED') as completed_orders_count
         FROM entrepreneur_profiles ep
@@ -109,8 +109,7 @@ const getNearbyEntrepreneurs = async (req, res) => {
       const queryStr = `
         SELECT ep.id, ep.user_id, u.full_name, u.profile_image, ep.business_name, ep.city, ep.state,
                ep.average_rating, ep.total_reviews, ep.is_available, ep.verification_status,
-               ep.is_identity_verified, ep.is_phone_verified, ep.is_artisan_verified, ep.is_business_verified,
-               ep.starting_price,
+               (SELECT MIN(s.price) FROM services s WHERE s.entrepreneur_id = ep.id AND s.is_active = true) as starting_price,
                ROUND((ST_Distance(ep.location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) / 1000.0)::numeric, 2) as distance_km
         FROM entrepreneur_profiles ep
         JOIN users u ON u.id = ep.user_id
@@ -131,11 +130,9 @@ const getEntrepreneurById = async (req, res) => {
     const entrepreneurId = id(req.params.id, "entrepreneur id");
 
     const data = await withTransaction(async (c) => {
-      // Increment profile view
-      await c.query("UPDATE entrepreneur_profiles SET profile_views = profile_views + 1 WHERE id = $1", [entrepreneurId]);
-
       const r = await c.query(
         `SELECT ep.*, u.full_name, u.email, u.phone as user_phone, u.profile_image,
+                (SELECT MIN(s.price) FROM services s WHERE s.entrepreneur_id = ep.id AND s.is_active = true) as starting_price,
                 (SELECT COUNT(*)::int FROM service_requests sr WHERE sr.entrepreneur_id = ep.id AND sr.status = 'COMPLETED') as completed_orders_count
          FROM entrepreneur_profiles ep
          JOIN users u ON u.id = ep.user_id
@@ -146,11 +143,10 @@ const getEntrepreneurById = async (req, res) => {
 
       const entrepreneur = r.rows[0];
 
-      // Fetch services, portfolio, reviews, availability
-      const [services, products, portfolio, reviews, availability] = await Promise.all([
+      // Fetch services, products, reviews, availability (portfolio_items table does not exist)
+      const [services, products, reviews, availability] = await Promise.all([
         c.query("SELECT * FROM services WHERE entrepreneur_id = $1 AND is_active = true ORDER BY created_at DESC", [entrepreneurId]),
         c.query("SELECT * FROM products WHERE entrepreneur_id = $1 AND is_available = true ORDER BY created_at DESC", [entrepreneurId]),
-        c.query("SELECT * FROM portfolio_items WHERE entrepreneur_id = $1 ORDER BY created_at DESC", [entrepreneurId]),
         c.query(
           `SELECT rev.*, u.full_name as customer_name, u.profile_image as customer_image
            FROM reviews rev
@@ -166,7 +162,7 @@ const getEntrepreneurById = async (req, res) => {
         ...entrepreneur,
         services: services.rows,
         products: products.rows,
-        portfolio: portfolio.rows,
+        portfolio: [],
         reviews: reviews.rows,
         availability: availability.rows
       };
@@ -180,7 +176,7 @@ const getEntrepreneurById = async (req, res) => {
 
 const createProfile = async (req, res) => {
   try {
-    const { business_name, bio, experience_years, phone, address, city, state, pincode, starting_price, latitude, longitude } = req.body;
+    const { business_name, bio, experience_years, phone, address, city, state, pincode, latitude, longitude } = req.body;
 
     const data = await withTransaction(async (c) => {
       const existing = await c.query("SELECT id FROM entrepreneur_profiles WHERE user_id = $1", [req.user.id]);
@@ -188,10 +184,10 @@ const createProfile = async (req, res) => {
 
       const r = await c.query(
         `INSERT INTO entrepreneur_profiles
-         (user_id, business_name, bio, experience_years, phone, address, city, state, pincode, starting_price, location, is_phone_verified)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-           CASE WHEN $11::double precision IS NOT NULL AND $12::double precision IS NOT NULL
-           THEN ST_SetSRID(ST_MakePoint($12, $11), 4326)::geography ELSE NULL END, true)
+         (user_id, business_name, bio, experience_years, phone, address, city, state, pincode, location)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+           CASE WHEN $10::double precision IS NOT NULL AND $11::double precision IS NOT NULL
+           THEN ST_SetSRID(ST_MakePoint($11, $10), 4326)::geography ELSE NULL END)
          RETURNING *`,
         [
           req.user.id,
@@ -203,7 +199,6 @@ const createProfile = async (req, res) => {
           city || null,
           state || null,
           pincode || null,
-          starting_price ? Number(starting_price) : 250.00,
           latitude ?? null,
           longitude ?? null
         ]
@@ -228,9 +223,7 @@ const updateProfile = async (req, res) => {
       city,
       state,
       pincode,
-      starting_price,
       is_available,
-      unavailable_dates,
       latitude,
       longitude
     } = req.body;
@@ -247,13 +240,11 @@ const updateProfile = async (req, res) => {
            city = COALESCE($6, city),
            state = COALESCE($7, state),
            pincode = COALESCE($8, pincode),
-           starting_price = COALESCE($9, starting_price),
-           is_available = COALESCE($10, is_available),
-           unavailable_dates = COALESCE($11, unavailable_dates),
-           location = CASE WHEN $12::double precision IS NOT NULL AND $13::double precision IS NOT NULL
-             THEN ST_SetSRID(ST_MakePoint($13, $12), 4326)::geography ELSE location END,
+           is_available = COALESCE($9, is_available),
+           location = CASE WHEN $10::double precision IS NOT NULL AND $11::double precision IS NOT NULL
+             THEN ST_SetSRID(ST_MakePoint($11, $10), 4326)::geography ELSE location END,
            updated_at = CURRENT_TIMESTAMP
-         WHERE id = $14 RETURNING *`,
+         WHERE id = $12 RETURNING *`,
         [
           business_name ?? null,
           bio ?? null,
@@ -263,9 +254,7 @@ const updateProfile = async (req, res) => {
           city ?? null,
           state ?? null,
           pincode ?? null,
-          starting_price ? Number(starting_price) : null,
           is_available ?? null,
-          unavailable_dates ?? null,
           latitude ?? null,
           longitude ?? null,
           ep.id
@@ -343,14 +332,12 @@ const getEntrepreneurDashboard = async (req, res) => {
   try {
     const data = await withTransaction(async (c) => {
       const ep = await profileByUser(c, req.user.id);
-      const [services, products, requests, quotes, orders, earnings, portfolio, reviews] = await Promise.all([
+      const [services, products, requests, orders, earnings, reviews] = await Promise.all([
         c.query("SELECT COUNT(*)::int count FROM services WHERE entrepreneur_id = $1 AND is_active = true", [ep.id]),
         c.query("SELECT COUNT(*)::int count FROM products WHERE entrepreneur_id = $1 AND is_available = true", [ep.id]),
-        c.query("SELECT COUNT(*)::int count FROM service_requests WHERE (entrepreneur_id = $1 OR entrepreneur_id IS NULL) AND status IN ('REQUESTED', 'PENDING')", [ep.id]),
-        c.query("SELECT COUNT(*)::int count FROM quotes WHERE entrepreneur_id = $1 AND status = 'PENDING'", [ep.id]),
+        c.query("SELECT COUNT(*)::int count FROM service_requests WHERE entrepreneur_id = $1 AND status = 'PENDING'", [ep.id]),
         c.query("SELECT COUNT(DISTINCT oi.order_id)::int count FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE oi.entrepreneur_id = $1 AND o.status NOT IN ('CANCELLED')", [ep.id]),
         c.query("SELECT COALESCE(SUM(oi.subtotal), 0)::numeric earnings FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE oi.entrepreneur_id = $1 AND o.status = 'COMPLETED'", [ep.id]),
-        c.query("SELECT COUNT(*)::int count FROM portfolio_items WHERE entrepreneur_id = $1", [ep.id]),
         c.query("SELECT COUNT(*)::int count FROM reviews WHERE entrepreneur_id = $1", [ep.id])
       ]);
 
@@ -360,10 +347,10 @@ const getEntrepreneurDashboard = async (req, res) => {
           services: services.rows[0].count,
           products: products.rows[0].count,
           pending_requests: requests.rows[0].count,
-          pending_quotes: quotes.rows[0].count,
+          pending_quotes: 0,
           orders: orders.rows[0].count,
           earnings: earnings.rows[0].earnings,
-          portfolio_items: portfolio.rows[0].count,
+          portfolio_items: 0,
           total_reviews: reviews.rows[0].count
         }
       };
@@ -379,7 +366,8 @@ const getMyProfile = async (req, res) => {
     const data = await withTransaction(async (c) => {
       const ep = await profileByUser(c, req.user.id);
       const r = await c.query(
-        `SELECT ep.*, u.full_name, u.email, u.phone as user_phone, u.profile_image
+        `SELECT ep.*, u.full_name, u.email, u.phone as user_phone, u.profile_image,
+                (SELECT MIN(s.price) FROM services s WHERE s.entrepreneur_id = ep.id AND s.is_active = true) as starting_price
          FROM entrepreneur_profiles ep JOIN users u ON u.id = ep.user_id WHERE ep.id = $1`,
         [ep.id]
       );
@@ -404,3 +392,4 @@ module.exports = {
   getEntrepreneurReviews,
   getEntrepreneurDashboard
 };
+

@@ -5,20 +5,23 @@ const createComplaint=async(req,res)=>{try{
  const {entrepreneur_id,order_id,service_request_id,subject,description}=req.body;
  if(!subject||!description)throw httpError("subject and description are required");
  const row=await withTransaction(async c=>{
+  let targetEntrepreneurId = entrepreneur_id ? id(entrepreneur_id, "entrepreneur id") : null;
   if(order_id){
-   const r=await c.query("SELECT id,customer_id,entrepreneur_id FROM orders WHERE id=$1",[order_id]);
+   const r=await c.query("SELECT o.id, o.customer_id, oi.entrepreneur_id FROM orders o JOIN order_items oi ON oi.order_id = o.id WHERE o.id=$1 LIMIT 1",[id(order_id, "order id")]);
    if(!r.rowCount)throw httpError("Order not found",404);
    if(req.user.role!=="ADMIN"&&r.rows[0].customer_id!==req.user.id&&req.user.role!=="ENTREPRENEUR")throw httpError("Access denied",403);
+   if(!targetEntrepreneurId) targetEntrepreneurId = r.rows[0].entrepreneur_id;
   }
   if(service_request_id){
-   const r=await c.query("SELECT id,customer_id,entrepreneur_id FROM service_requests WHERE id=$1",[service_request_id]);
+   const r=await c.query("SELECT id,customer_id,entrepreneur_id FROM service_requests WHERE id=$1",[id(service_request_id, "service request id")]);
    if(!r.rowCount)throw httpError("Service request not found",404);
    if(req.user.role!=="ADMIN"&&r.rows[0].customer_id!==req.user.id)throw httpError("Access denied",403);
+   if(!targetEntrepreneurId) targetEntrepreneurId = r.rows[0].entrepreneur_id;
   }
   return (await c.query(
    `INSERT INTO complaints(customer_id,entrepreneur_id,order_id,service_request_id,subject,description)
     VALUES($1,$2,$3,$4,$5,$6) RETURNING *`,
-   [req.user.role==="CUSTOMER"?req.user.id:null,entrepreneur_id||null,order_id||null,service_request_id||null,subject,description])).rows[0];
+   [req.user.role==="CUSTOMER"?req.user.id:null,targetEntrepreneurId,order_id||null,service_request_id||null,subject,description])).rows[0];
  });
  res.status(201).json({success:true,complaint:row});
 }catch(e){sendError(res,e)}};
