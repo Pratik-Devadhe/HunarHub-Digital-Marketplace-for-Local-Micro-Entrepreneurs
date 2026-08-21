@@ -1,13 +1,31 @@
+const path = require('path');
+require("dotenv").config({ path: path.resolve(__dirname, '.env') });
+require("dotenv").config({ path: path.resolve(__dirname, '../.env') });
 const { Pool } = require("pg");
-require("dotenv").config();
 
-const pool = new Pool({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+    throw new Error("DATABASE_URL environment variable is missing.");
+}
+
+const isLocal = connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
+
+const poolConfig = {
+    connectionString: connectionString,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000
+};
+
+if (!isLocal) {
+    poolConfig.ssl = { rejectUnauthorized: false };
+}
+
+const pool = new Pool(poolConfig);
+
+pool.on('error', (err) => {
+    // Idle client error listener
 });
 
-pool.on("error",(err)=>console.error("Unexpected PostgreSQL error:",err));
-module.exports=pool;
+module.exports = pool;

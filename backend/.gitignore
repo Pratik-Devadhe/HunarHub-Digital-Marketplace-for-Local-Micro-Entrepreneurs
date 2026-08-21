@@ -1,115 +1,113 @@
-# ==========================================
-# MERN STACK .gitignore
-# ==========================================
-
-# ---------- Dependencies ----------
+# Dependencies
 node_modules/
-**/node_modules/
+.pnpm-store/
+.yarn/
+bower_components/
 
-# ---------- Environment Variables ----------
+# Environment variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+*.env
 
-# Keep example environment file
-!.env.example
+# Build output
+dist/
+build/
+out/
+.next/
+.nuxt/
+coverage/
 
-# ---------- Logs ----------
+# Logs
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-# ---------- Runtime / PID files ----------
-*.pid
-*.pid.lock
-pids/
-*.seed
-*.pid
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# ---------- React / Vite / Frontend ----------
-dist/
-build/
-.vite/
+# IDE / Editor
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
 
-# ---------- Coverage ----------
-coverage/
-.nyc_output/
+.idea/
+*.iml
 
-# ---------- Cache ----------
-.cache/
-.parcel-cache/
-.eslintcache
-.stylelintcache
-.vscode/.cache/
-
-# ---------- Temporary files ----------
+# Temporary files
 tmp/
 temp/
 *.tmp
 *.temp
 
-# ---------- Uploads / User Generated Files ----------
-uploads/
-public/uploads/
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
 
-# ---------- Database / Local Data ----------
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Java
+target/
+.classpath
+.project
+.settings/
+
+# Maven
+.mvn/timing.properties
+
+# Gradle
+.gradle/
+build/
+
+# Spring Boot
+application-local.properties
+application-local.yml
+
+# Database
 *.sqlite
 *.sqlite3
 *.db
 
-# ---------- MongoDB local files ----------
-data/
-mongodb/
-mongo-data/
+# Test / Coverage
+coverage/
+.nyc_output/
 
-# ---------- IDE ----------
-.vscode/
-.idea/
-*.iml
-
-# Keep VS Code settings if you specifically want them
-# !.vscode/settings.json
-
-# ---------- OS Files ----------
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# ---------- Editor Files ----------
-*.swp
-*.swo
-*~
-*.bak
-
-# ---------- Testing ----------
-test-results/
-playwright-report/
-blob-report/
-
-# ---------- TypeScript ----------
-*.tsbuildinfo
-
-# ---------- Optional package manager files ----------
-# Uncomment only if you DON'T want these committed
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
-
-# ---------- Vercel ----------
+# Vercel
 .vercel/
 
-# ---------- Netlify ----------
+# Netlify
 .netlify/
 
-# ---------- Render ----------
-.render/
+# Docker
+docker-compose.override.yml
 
-# ---------- Misc ----------
-*.orig
-*.rej
+# Security / Secrets
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+
+# Generated files
+*.generated.*
+*.cache
+
+# Uploads
+uploads/
