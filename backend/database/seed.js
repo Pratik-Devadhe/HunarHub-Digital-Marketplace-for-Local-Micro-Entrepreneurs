@@ -321,13 +321,49 @@ async function seed() {
                 ($3, 'New Service Request', 'You have received a new service request for custom blouse stitching.', 'SERVICE_REQUEST', false)
         `, [usersMap['ananya@gmail.com'], usersMap['priya@gmail.com'], usersMap['sunita@hunarhub.com']]);
 
-        // 17. Complaints
-        console.log("Inserting complaints...");
+        // 18. Seed Portfolio Items
+        console.log("Inserting portfolio items...");
         await client.query(`
-            INSERT INTO complaints (customer_id, entrepreneur_id, order_id, service_request_id, subject, description, status)
+            INSERT INTO portfolio_items (entrepreneur_id, title, description, image_url, price)
             VALUES
-                ($1, $2, $3, NULL, 'Query regarding delivery schedule', 'Order status is pending, wanted to know estimated dispatch date.', 'OPEN')
-        `, [usersMap['vikram@gmail.com'], epMap[usersMap['sunita@hunarhub.com']], order3]);
+                ($1, 'Custom Resoling Italian Oxford Shoes', 'Resoling formal men leather shoes with Goodyear welt stitching.', 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=500', 750.00),
+                ($1, 'Handcrafted Leather Travel Duffel Bag', 'Vegetable tanned full-grain leather duffel bag crafted for vintage aesthetic.', 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500', 3499.00),
+                ($2, 'Terracotta Traditional Water Pitcher (Matka)', 'Hand-thrown earthen clay matka with stainless steel tap.', 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500', 450.00),
+                ($2, 'Hand-painted Decorative Terracotta Flower Vases', 'Set of 3 hand-painted clay vases with folk art designs.', 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500', 899.00),
+                ($3, 'Heavy Banarasi Silk Zardozi Lehenga Blouse', 'Custom embroidered bridal blouse with antique gold zari work.', 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500', 2500.00),
+                ($4, 'Carved Teak Wood Folding Coffee Table', 'Solide teak wood table featuring traditional floral hand carvings.', 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=500', 4200.00);
+        `, [
+            epMap[usersMap['ramesh@hunarhub.com']],
+            epMap[usersMap['lakshmi@hunarhub.com']],
+            epMap[usersMap['sunita@hunarhub.com']],
+            epMap[usersMap['mohan@hunarhub.com']]
+        ]);
+
+        // 19. Seed Quotes
+        console.log("Inserting sample quotes...");
+        await client.query(`
+            INSERT INTO quotes (service_request_id, entrepreneur_id, proposed_price, estimated_completion, message, status)
+            VALUES
+                ($1, $2, 650.00, '2 Days', 'I can deliver custom terracotta cookware with heat-resistant clay within 48 hours.', 'PENDING'),
+                ($1, $3, 700.00, '3 Days', 'Including extra glazed lid and natural cooling pot coating.', 'PENDING');
+        `, [
+            srMap[usersMap['priya@gmail.com']],
+            epMap[usersMap['lakshmi@hunarhub.com']],
+            epMap[usersMap['mohan@hunarhub.com']]
+        ]);
+
+        // 20. Seed Messages
+        console.log("Inserting sample messages...");
+        await client.query(`
+            INSERT INTO messages (sender_id, receiver_id, service_request_id, message_text, is_read)
+            VALUES
+                ($1, $2, $3, 'Hello Sunita, I have uploaded the reference blouse pattern. Can you finish it by Friday?', true),
+                ($2, $1, $3, 'Namaste Ananya ji! Yes, Friday is doable. Please provide the exact sleeve measurement.', true);
+        `, [
+            usersMap['ananya@gmail.com'],
+            usersMap['sunita@hunarhub.com'],
+            srMap[usersMap['ananya@gmail.com']]
+        ]);
 
         await client.query("COMMIT");
         console.log("✅ Database seeding completed successfully!");

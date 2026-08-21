@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ShoppingBag, Search, User, LogOut, Shield, Wrench, Package, Sparkles } from "lucide-react";
+import { ShoppingBag, Search, User, LogOut, Shield, Wrench, Package, Sparkles, MapPin, Store } from "lucide-react";
 import "./Navbar.css";
 
 export default function Navbar({
@@ -10,7 +10,9 @@ export default function Navbar({
   onOpenAuth,
   onLogout,
   searchQuery,
-  setSearchQuery
+  setSearchQuery,
+  selectedCity,
+  setSelectedCity
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -24,20 +26,42 @@ export default function Navbar({
     <header className="navbar-header">
       <div className="navbar-inner">
         
-        {/* Brand Logo */}
-        <div className="navbar-brand" onClick={() => navigate("/")}>
-          <div className="brand-icon-box">
-            <div className="brand-icon-inner">
-              H
+        {/* Brand Logo & City Selector */}
+        <div className="navbar-brand-wrapper">
+          <div className="navbar-brand" onClick={() => navigate("/")}>
+            <div className="brand-icon-box">
+              <div className="brand-icon-inner">
+                H
+              </div>
+            </div>
+            <div>
+              <span className="brand-text-title">
+                HunarHub <span className="sulekha-tag">Expert Marketplace</span>
+              </span>
+              <span className="brand-text-sub">
+                Verified Local Artisans & Micro-Entrepreneurs
+              </span>
             </div>
           </div>
-          <div>
-            <span className="brand-text-title">
-              HunarHub
-            </span>
-            <span className="brand-text-sub">
-              Connecting Skills Creating Opportunities
-            </span>
+
+          {/* Sulekha Header City Selector */}
+          <div className="navbar-city-selector">
+            <MapPin className="city-selector-icon" />
+            <select
+              value={selectedCity || ""}
+              onChange={(e) => setSelectedCity?.(e.target.value)}
+              className="header-city-select"
+            >
+              <option value="">All India (Select City)</option>
+              <option value="Mumbai">Mumbai</option>
+              <option value="Pune">Pune</option>
+              <option value="Delhi">Delhi</option>
+              <option value="Bengaluru">Bengaluru</option>
+              <option value="Jaipur">Jaipur</option>
+              <option value="Varanasi">Varanasi</option>
+              <option value="Kolkata">Kolkata</option>
+              <option value="Chennai">Chennai</option>
+            </select>
           </div>
         </div>
 
@@ -46,7 +70,7 @@ export default function Navbar({
           <Search className="search-icon" />
           <input
             type="text"
-            placeholder="Search cobblers, pottery, sarees, products by skill or city..."
+            placeholder="Search AC repair, cobblers, tailors, shifting, pottery in your city..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -59,7 +83,7 @@ export default function Navbar({
             className={`nav-link-btn ${isCurrent("/") ? "active" : ""}`}
           >
             <Sparkles className="nav-icon" />
-            <span>Explore Marketplace</span>
+            <span>Marketplace</span>
           </button>
 
           {user && (
@@ -93,8 +117,24 @@ export default function Navbar({
           )}
         </nav>
 
-        {/* Right Actions: Cart & Profile */}
+        {/* Right Actions: Cart, List Business & Profile */}
         <div className="navbar-actions">
+
+          {/* List Your Business FREE button */}
+          {(!user || user.role !== "ENTREPRENEUR") && (
+            <button
+              onClick={() => {
+                if (!user) onOpenAuth();
+                else navigate("/entrepreneur");
+              }}
+              className="btn-list-business"
+              title="Register your business and start receiving local leads"
+            >
+              <Store size={15} />
+              <span>List Business <strong>FREE</strong></span>
+            </button>
+          )}
+
           {/* Cart Button */}
           <button onClick={() => navigate("/cart")} className={`cart-icon-btn ${isCurrent("/cart") ? "active" : ""}`} title="View Shopping Cart">
             <ShoppingBag className="cart-icon" />

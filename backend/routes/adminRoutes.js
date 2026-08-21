@@ -1,5 +1,5 @@
 const express = require("express");
-const { getDashboard, getEntrepreneurs, getEntrepreneurById, approveEntrepreneur, rejectEntrepreneur, getUsers, deactivateUser, getOrders, getServiceRequests, getComplaints, resolveComplaint, getAnalytics } = require("../controllers/adminController");
+const { getDashboard, getEntrepreneurs, getEntrepreneurById, approveEntrepreneur, rejectEntrepreneur, updateVerificationBadges, getUsers, deactivateUser, getOrders, getServiceRequests, getComplaints, resolveComplaint, getAnalytics } = require("../controllers/adminController");
 const { authenticateUser } = require("../middleware/authMiddleware");
 const { requireAdmin, requireCustomer, requireEntrepreneur } = require("../middleware/roleMiddleware");
 const router = express.Router();
@@ -15,6 +15,8 @@ router.get("/entrepreneurs/:id", authenticateUser, requireAdmin, getEntrepreneur
 router.put("/entrepreneurs/:id/approve", authenticateUser, requireAdmin, approveEntrepreneur);
 // PUT entrepreneurs/:id/reject
 router.put("/entrepreneurs/:id/reject", authenticateUser, requireAdmin, rejectEntrepreneur);
+// PUT entrepreneurs/:id/verification
+router.put("/entrepreneurs/:id/verification", authenticateUser, requireAdmin, updateVerificationBadges);
 // GET users
 router.get("/users", authenticateUser, requireAdmin, getUsers);
 // PUT users/:id/deactivate

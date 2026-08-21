@@ -6,6 +6,7 @@ import CustomerPortal from "./components/CustomerPortal";
 import EntrepreneurPortal from "./components/EntrepreneurPortal";
 import AdminPortal from "./components/AdminPortal";
 import CartPage from "./components/CartPage";
+import QuoteWizardModal from "./components/QuoteWizardModal";
 import ServiceBookingModal from "./components/ServiceBookingModal";
 import CartDrawer from "./components/CartDrawer";
 import AuthModal from "./components/AuthModal";
@@ -27,6 +28,7 @@ export default function App() {
   const [services, setServices] = useState([]);
   const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCity, setSelectedCity] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -36,6 +38,7 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [bookingService, setBookingService] = useState(null);
   const [bookingMode, setBookingMode] = useState("book"); // "book" | "quote"
+  const [quoteTarget, setQuoteTarget] = useState(null); // { service, category }
   const [reviewItem, setReviewItem] = useState(null);
 
   // Toast Notification State
@@ -165,17 +168,31 @@ export default function App() {
 
   // Booking & Review Submit
   const handleBookService = (service, mode = "book") => {
+    if (mode === "quote") {
+      setQuoteTarget({ service });
+      return;
+    }
     if (!user) {
       setIsAuthOpen(true);
-      showToast("info", mode === "quote" ? "Please sign in to request a free quote" : "Please sign in to book a service");
+      showToast("info", "Please sign in to book a service");
       return;
     }
     setBookingMode(mode);
     setBookingService(service);
   };
 
+  const handleOpenQuoteWizard = (service = null, category = null) => {
+    setQuoteTarget({ service, category });
+  };
+
   const handleSubmitBooking = async (bookingData) => {
     await api.createServiceRequest(bookingData);
+    loadInitialData();
+  };
+
+  const handleSubmitQuoteRequest = async (quoteData) => {
+    await api.createServiceRequest(quoteData);
+    showToast("success", "Free quote request submitted to top matched experts!");
     loadInitialData();
   };
 
@@ -196,6 +213,8 @@ export default function App() {
         onLogout={handleLogout}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        selectedCity={selectedCity}
+        setSelectedCity={setSelectedCity}
       />
 
       {/* Main View Area with React Router */}
@@ -212,8 +231,11 @@ export default function App() {
                 products={products}
                 selectedCategory={selectedCategory}
                 setSelectedCategory={setSelectedCategory}
+                selectedCity={selectedCity}
+                setSelectedCity={setSelectedCity}
                 searchQuery={searchQuery}
                 onBookService={handleBookService}
+                onOpenQuoteWizard={handleOpenQuoteWizard}
                 onAddToCart={handleAddToCart}
                 loading={loading}
               />
@@ -320,10 +342,10 @@ export default function App() {
       <footer className="app-footer">
         <div className="app-footer-inner">
           <div className="app-footer-brand">
-            <span className="app-footer-brand-name">HunarHub Marketplace</span>
+            <span className="app-footer-brand-name">HunarHub Service Experts Network</span>
             <span>— Empowering Local Artisans & Micro-Entrepreneurs</span>
           </div>
-          <p>© 2026 HunarHub Platform. Digitalizing local commerce.</p>
+          <p>© 2026 HunarHub Platform. Connecting customers with trusted local professionals.</p>
         </div>
       </footer>
 
@@ -333,6 +355,17 @@ export default function App() {
         onClose={() => setIsAuthOpen(false)}
         onLogin={handleLogin}
         onRegister={handleRegister}
+        showToast={showToast}
+      />
+
+      <QuoteWizardModal
+        isOpen={!!quoteTarget}
+        onClose={() => setQuoteTarget(null)}
+        service={quoteTarget?.service}
+        category={quoteTarget?.category}
+        city={selectedCity}
+        entrepreneurs={entrepreneurs}
+        onSubmitQuote={handleSubmitQuoteRequest}
         showToast={showToast}
       />
 

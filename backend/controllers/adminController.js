@@ -47,6 +47,38 @@ const setVerification=async(req,res,status)=>{try{
 const approveEntrepreneur=(req,res)=>setVerification(req,res,"APPROVED");
 const rejectEntrepreneur=(req,res)=>setVerification(req,res,"REJECTED");
 
+const updateVerificationBadges = async (req, res) => {
+  try {
+    const epId = id(req.params.id, "entrepreneur id");
+    const { is_identity_verified, is_phone_verified, is_artisan_verified, is_business_verified, verification_status } = req.body;
+
+    const row = await withTransaction(async (c) => {
+      const r = await c.query(
+        `UPDATE entrepreneur_profiles SET
+           is_identity_verified = COALESCE($1, is_identity_verified),
+           is_phone_verified = COALESCE($2, is_phone_verified),
+           is_artisan_verified = COALESCE($3, is_artisan_verified),
+           is_business_verified = COALESCE($4, is_business_verified),
+           verification_status = COALESCE($5, verification_status),
+           updated_at = CURRENT_TIMESTAMP
+         WHERE id = $6 RETURNING *`,
+        [is_identity_verified, is_phone_verified, is_artisan_verified, is_business_verified, verification_status, epId]
+      );
+      if (!r.rowCount) throw httpError("Entrepreneur not found", 404);
+
+      await c.query(
+        `INSERT INTO notifications (user_id, title, message, type) VALUES ($1, 'Verification Badges Updated', 'Your verification status and badges have been updated by admin.', 'ADMIN')`,
+        [r.rows[0].user_id]
+      );
+      return r.rows[0];
+    });
+
+    res.json({ success: true, entrepreneur: row });
+  } catch (e) {
+    sendError(res, e);
+  }
+};
+
 const getUsers=async(req,res)=>{try{
  const rows=await withTransaction(async c=>(await c.query(
   `SELECT id,full_name,email,phone,role,profile_image,is_active,created_at FROM users ORDER BY created_at DESC`)).rows);
@@ -104,5 +136,5 @@ const getAnalytics=async(req,res)=>{try{
  res.json({success:true,analytics:data});
 }catch(e){sendError(res,e)}};
 
-module.exports={getDashboard,getEntrepreneurs,getEntrepreneurById,approveEntrepreneur,rejectEntrepreneur,getUsers,deactivateUser,
+module.exports={getDashboard,getEntrepreneurs,getEntrepreneurById,approveEntrepreneur,rejectEntrepreneur,updateVerificationBadges,getUsers,deactivateUser,
 getOrders,getServiceRequests,getComplaints,resolveComplaint,getAnalytics};

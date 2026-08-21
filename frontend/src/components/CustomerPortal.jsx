@@ -1,25 +1,56 @@
 import React, { useState, useEffect } from "react";
-import { Package, Calendar, Clock, MapPin, CheckCircle2, CreditCard, Star, RefreshCw, AlertCircle, ShieldCheck } from "lucide-react";
+import {
+  Package,
+  Calendar,
+  Clock,
+  MapPin,
+  CheckCircle2,
+  CreditCard,
+  Star,
+  RefreshCw,
+  AlertCircle,
+  ShieldCheck,
+  MessageSquareQuote,
+  MessageSquare,
+  Heart,
+  Check,
+  X,
+  ChevronDown,
+  ChevronUp,
+  FileText
+} from "lucide-react";
 import { api } from "../services/api";
+import ChatModal from "./ChatModal";
 import "./CustomerPortal.css";
 
-export default function CustomerPortal({ onOpenReview, showToast }) {
-  const [activeTab, setActiveTab] = useState("orders"); // "orders" | "requests"
+export default function CustomerPortal({ onOpenReview, showToast, currentUser }) {
+  const [activeTab, setActiveTab] = useState("requests"); // "requests" | "orders" | "favorites"
   const [orders, setOrders] = useState([]);
   const [requests, setRequests] = useState([]);
+  const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Quotes drawer state
+  const [expandedRequestId, setExpandedRequestId] = useState(null);
+  const [requestQuotesMap, setRequestQuotesMap] = useState({});
+  const [quotesLoading, setQuotesLoading] = useState(false);
+
+  // Chat Modal State
+  const [chatPartner, setChatPartner] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [ordRes, reqRes] = await Promise.all([
+      const [ordRes, reqRes, favRes] = await Promise.all([
         api.getMyOrders().catch(() => ({ orders: [] })),
-        api.getMyServiceRequests().catch(() => ({ requests: [] }))
+        api.getMyServiceRequests().catch(() => ({ requests: [] })),
+        api.getFavorites().catch(() => ({ favorites: [] }))
       ]);
       setOrders(ordRes.orders || []);
       setRequests(reqRes.requests || []);
+      setFavorites(favRes.favorites || []);
     } catch (err) {
-      showToast("error", "Failed to load activity history");
+      showToast("error", "Failed to load customer dashboard data");
     } finally {
       setLoading(false);
     }
@@ -28,6 +59,43 @@ export default function CustomerPortal({ onOpenReview, showToast }) {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const toggleQuotes = (srId) => {
+    if (expandedRequestId === srId) {
+      setExpandedRequestId(null);
+      return;
+    }
+    setExpandedRequestId(srId);
+    setQuotesLoading(true);
+    api.getQuotesForRequest(srId)
+      .then((res) => {
+        if (res && res.quotes) {
+          setRequestQuotesMap((prev) => ({ ...prev, [srId]: res.quotes }));
+        }
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setQuotesLoading(false));
+  };
+
+  const handleAcceptQuote = async (quoteId) => {
+    try {
+      await api.acceptQuote(quoteId);
+      showToast("success", "Quote accepted! Artisan has been assigned to your request.");
+      fetchData();
+    } catch (err) {
+      showToast("error", err.message || "Failed to accept quote");
+    }
+  };
+
+  const handleRejectQuote = async (quoteId) => {
+    try {
+      await api.rejectQuote(quoteId);
+      showToast("info", "Quote rejected");
+      if (expandedRequestId) toggleQuotes(expandedRequestId);
+    } catch (err) {
+      showToast("error", err.message || "Failed to reject quote");
+    }
+  };
 
   const handlePayOrder = async (orderId) => {
     try {
@@ -70,8 +138,8 @@ export default function CustomerPortal({ onOpenReview, showToast }) {
       {/* Header */}
       <div className="glass-panel portal-header-card">
         <div>
-          <h1 className="portal-title">My Customer Dashboard</h1>
-          <p className="portal-subtitle">Track your product orders and booked artisan service requests</p>
+          <h1 className="portal-title">Customer Dashboard & Activity</h1>
+          <p className="portal-subtitle">Manage service requests, compare artisan price quotes, track orders & chat directly with experts</p>
         </div>
         <button onClick={fetchData} className="btn-secondary">
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -82,6 +150,13 @@ export default function CustomerPortal({ onOpenReview, showToast }) {
       {/* Tabs */}
       <div className="portal-tabs-row">
         <button
+          onClick={() => setActiveTab("requests")}
+          className={`portal-tab-btn ${activeTab === "requests" ? "active" : ""}`}
+        >
+          <Calendar className="w-4 h-4" />
+          <span>Service Requests & Quotes ({requests.length})</span>
+        </button>
+        <button
           onClick={() => setActiveTab("orders")}
           className={`portal-tab-btn ${activeTab === "orders" ? "active" : ""}`}
         >
@@ -89,15 +164,215 @@ export default function CustomerPortal({ onOpenReview, showToast }) {
           <span>Product Orders ({orders.length})</span>
         </button>
         <button
-          onClick={() => setActiveTab("requests")}
-          className={`portal-tab-btn ${activeTab === "requests" ? "active" : ""}`}
+          onClick={() => setActiveTab("favorites")}
+          className={`portal-tab-btn ${activeTab === "favorites" ? "active" : ""}`}
         >
-          <Calendar className="w-4 h-4" />
-          <span>Service Bookings ({requests.length})</span>
+          <Heart className="w-4 h-4" />
+          <span>Saved Favorites ({favorites.length})</span>
         </button>
       </div>
 
-      {/* Orders Tab */}
+      {/* SERVICE REQUESTS & MULTI-QUOTE TAB */}
+      {activeTab === "requests" && (
+        <div className="orders-list">
+          {requests.map((sr) => {
+            const quotes = requestQuotesMap[sr.id] || [];
+            const isExpanded = expandedRequestId === sr.id;
+
+            return (
+              <div key={sr.id} className="glass-panel order-history-card">
+                <div className="order-card-header">
+                  <div>
+                    <div className="order-id-row">
+                      <h3 className="order-id-title">{sr.title || sr.service_title || "Custom Service Request"}</h3>
+                      <span className={`badge badge-${(sr.status || "pending").toLowerCase()}`}>
+                        {sr.status}
+                      </span>
+                      {sr.category_name && (
+                        <span className="badge badge-accepted">{sr.category_name}</span>
+                      )}
+                    </div>
+                    <p className="portal-subtitle">Artisan / Business: {sr.business_name || "Open Marketplace Request"}</p>
+                  </div>
+                  <div className="order-price-box">
+                    <span className="order-price-label">{sr.final_price ? "Final Agreed Price" : "Target Budget"}</span>
+                    <span className="order-price-value">
+                      ₹{sr.final_price || sr.budget_max || sr.estimated_price || "Open Quote"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="service-details-grid">
+                  <div className="service-detail-box">
+                    <span className="service-detail-label">Requested Date & City</span>
+                    <div className="service-detail-values">
+                      <span className="service-detail-val"><Calendar className="detail-icon" /> {sr.requested_date ? new Date(sr.requested_date).toLocaleDateString() : "Flexible"}</span>
+                      <span className="service-detail-val"><MapPin className="detail-icon" /> {sr.city || sr.address || "Local City"}</span>
+                    </div>
+                  </div>
+
+                  <div className="service-detail-box">
+                    <span className="service-detail-label">Quotes Received</span>
+                    <span className="service-detail-val" style={{ fontWeight: 700, color: "#d97706" }}>
+                      <MessageSquareQuote className="detail-icon" /> {sr.quote_count || 0} Artisan Proposals
+                    </span>
+                  </div>
+                </div>
+
+                {sr.description && (
+                  <p className="service-customer-note">
+                    "{sr.description}"
+                  </p>
+                )}
+
+                {/* Footer Controls */}
+                <div className="order-card-footer">
+                  <button
+                    onClick={() => toggleQuotes(sr.id)}
+                    className="btn-sec-outline"
+                    style={{ fontSize: "0.88rem" }}
+                  >
+                    <MessageSquareQuote size={16} />
+                    <span>{isExpanded ? "Hide Artisan Quotes" : `View & Compare Quotes (${sr.quote_count || 0})`}</span>
+                    {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
+
+                  <div className="order-actions-box">
+                    {["REQUESTED", "PENDING", "QUOTED"].includes(sr.status) && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await api.cancelServiceRequest(sr.id);
+                            showToast("info", "Service request cancelled");
+                            fetchData();
+                          } catch (err) {
+                            showToast("error", err.message || "Failed to cancel service");
+                          }
+                        }}
+                        className="btn-danger btn-xs"
+                      >
+                        <span>Cancel Request</span>
+                      </button>
+                    )}
+                    {["ACCEPTED", "CONFIRMED", "IN_PROGRESS"].includes(sr.status) && (
+                      <button
+                        onClick={() => setChatPartner({ user_id: sr.entrepreneur_user_id || sr.entrepreneur_id, business_name: sr.business_name, full_name: sr.entrepreneur_name })}
+                        className="btn-sec-outline"
+                      >
+                        <MessageSquare size={14} />
+                        <span>Chat Artisan</span>
+                      </button>
+                    )}
+                    {["ACCEPTED", "IN_PROGRESS", "COMPLETED"].includes(sr.status) && (
+                      <button
+                        onClick={() => handlePayServiceRequest(sr.id)}
+                        className="btn-primary"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span>Pay Service Fee</span>
+                      </button>
+                    )}
+                    {sr.status === "COMPLETED" && (
+                      <button
+                        onClick={() => onOpenReview({ entrepreneur_id: sr.entrepreneur_id, service_request_id: sr.id })}
+                        className="btn-outline"
+                      >
+                        <Star className="w-3.5 h-3.5" />
+                        <span>Rate Service</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* EXPANDED QUOTES COMPARISON DRAWER */}
+                {isExpanded && (
+                  <div style={{ marginTop: "1.25rem", paddingTop: "1.25rem", borderTop: "1px solid #e2e8f0", background: "#f8fafc", padding: "1.25rem", borderRadius: "12px" }}>
+                    <h4 style={{ margin: "0 0 1rem 0", color: "#0f172a", fontSize: "1rem" }}>
+                      Artisan Price Quotes & Completion Proposals
+                    </h4>
+
+                    {quotesLoading ? (
+                      <p style={{ color: "#64748b" }}>Loading received quotes...</p>
+                    ) : quotes.length === 0 ? (
+                      <p style={{ color: "#64748b" }}>No quotes submitted by local artisans yet. Your request is visible in the local expert marketplace network!</p>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                        {quotes.map((q) => (
+                          <div key={q.id} style={{ background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "12px", padding: "1rem" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+                              <div>
+                                <h5 style={{ margin: "0 0 0.2rem 0", fontSize: "1.05rem", color: "#0f172a" }}>{q.business_name}</h5>
+                                <div style={{ fontSize: "0.85rem", color: "#64748b", display: "flex", gap: "0.75rem" }}>
+                                  <span><Star size={14} fill="#f59e0b" color="#f59e0b" style={{ display: "inline" }} /> {q.average_rating || "4.9"} rating</span>
+                                  <span>• {q.experience_years || 5}+ Yrs Exp</span>
+                                  <span>• {q.city || "Mumbai"}</span>
+                                </div>
+                              </div>
+
+                              <div style={{ textAlign: "right" }}>
+                                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#d97706" }}>₹{q.proposed_price}</div>
+                                <div style={{ fontSize: "0.8rem", color: "#64748b" }}>Est. Delivery: {q.estimated_completion || "2 Days"}</div>
+                              </div>
+                            </div>
+
+                            {q.message && (
+                              <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.92rem", color: "#334155", fontStyle: "italic", background: "#f1f5f9", padding: "0.6rem 0.8rem", borderRadius: "8px" }}>
+                                "{q.message}"
+                              </p>
+                            )}
+
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <button
+                                className="btn-sec-outline"
+                                style={{ padding: "0.45rem 0.85rem", fontSize: "0.82rem" }}
+                                onClick={() => setChatPartner({ user_id: q.artisan_user_id || q.entrepreneur_id, business_name: q.business_name })}
+                              >
+                                <MessageSquare size={14} /> Message Artisan
+                              </button>
+
+                              {q.status === "PENDING" && sr.status !== "ACCEPTED" && (
+                                <div style={{ display: "flex", gap: "0.5rem" }}>
+                                  <button
+                                    className="btn-danger btn-xs"
+                                    onClick={() => handleRejectQuote(q.id)}
+                                  >
+                                    <X size={14} /> Reject
+                                  </button>
+                                  <button
+                                    className="btn-primary"
+                                    style={{ padding: "0.45rem 1rem", fontSize: "0.85rem" }}
+                                    onClick={() => handleAcceptQuote(q.id)}
+                                  >
+                                    <Check size={14} /> Accept Quote & Hire
+                                  </button>
+                                </div>
+                              )}
+                              {q.status === "ACCEPTED" && (
+                                <span style={{ color: "#10b981", fontWeight: 700, fontSize: "0.9rem" }}>
+                                  ✓ Accepted Proposal
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {requests.length === 0 && !loading && (
+            <div className="glass-panel empty-state-box">
+              <Calendar className="empty-icon" />
+              <p className="empty-text">No service requests booked yet.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* PRODUCT ORDERS TAB */}
       {activeTab === "orders" && (
         <div className="orders-list">
           {orders.map((ord) => (
@@ -121,7 +396,6 @@ export default function CustomerPortal({ onOpenReview, showToast }) {
                 </div>
               </div>
 
-              {/* Items List */}
               <div className="order-items-list">
                 <span className="order-items-title">Ordered Items</span>
                 {ord.items && ord.items.map((it, i) => (
@@ -135,7 +409,6 @@ export default function CustomerPortal({ onOpenReview, showToast }) {
                 ))}
               </div>
 
-              {/* Progress Bar */}
               <div className="order-progress-box">
                 <div className="order-progress-header">
                   <span>Fulfillment Progress</span>
@@ -149,13 +422,12 @@ export default function CustomerPortal({ onOpenReview, showToast }) {
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="order-card-footer">
                 <span className="order-address-box">
                   <MapPin className="address-icon" />
                   <span className="address-text">{ord.shipping_address}</span>
                 </span>
-                
+
                 <div className="order-actions-box">
                   {ord.payment_status !== "PAID" && (
                     <button
@@ -189,97 +461,56 @@ export default function CustomerPortal({ onOpenReview, showToast }) {
         </div>
       )}
 
-      {/* Service Requests Tab */}
-      {activeTab === "requests" && (
+      {/* SAVED FAVORITES TAB */}
+      {activeTab === "favorites" && (
         <div className="orders-list">
-          {requests.map((sr) => (
-            <div key={sr.id} className="glass-panel order-history-card">
-              <div className="order-card-header">
-                <div>
-                  <div className="order-id-row">
-                    <h3 className="order-id-title">{sr.service_title}</h3>
-                    <span className={`badge badge-${(sr.status || "pending").toLowerCase()}`}>
-                      {sr.status}
+          {favorites.length === 0 ? (
+            <div className="glass-panel empty-state-box">
+              <Heart className="empty-icon" />
+              <p className="empty-text">No saved favorite artisans, services, or products yet.</p>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.25rem" }}>
+              {favorites.map((fav) => (
+                <div key={fav.id} className="glass-panel" style={{ padding: "1.25rem", borderRadius: "16px", background: "#ffffff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+                    <span className="badge badge-accepted">
+                      {fav.product_name ? "Product" : fav.service_title ? "Service" : "Artisan"}
                     </span>
-                  </div>
-                  <p className="portal-subtitle">Artisan Business: {sr.business_name || "Local Entrepreneur"}</p>
-                </div>
-                <div className="order-price-box">
-                  <span className="order-price-label">Est. Price</span>
-                  <span className="order-price-value">₹{sr.final_price || sr.estimated_price}</span>
-                </div>
-              </div>
-
-              <div className="service-details-grid">
-                <div className="service-detail-box">
-                  <span className="service-detail-label">Date & Time</span>
-                  <div className="service-detail-values">
-                    <span className="service-detail-val"><Calendar className="detail-icon" /> {new Date(sr.requested_date).toLocaleDateString()}</span>
-                    <span className="service-detail-val"><Clock className="detail-icon" /> {sr.requested_time}</span>
-                  </div>
-                </div>
-
-                <div className="service-detail-box">
-                  <span className="service-detail-label">Service Address</span>
-                  <span className="service-detail-val truncate"><MapPin className="detail-icon" /> {sr.address}</span>
-                </div>
-              </div>
-
-              {sr.customer_note && (
-                <p className="service-customer-note">
-                  "{sr.customer_note}"
-                </p>
-              )}
-
-              <div className="order-card-footer">
-                <span className="service-booking-id">Booking ID: #{sr.id}</span>
-                <div className="order-actions-box">
-                  {(sr.status === "PENDING" || sr.status === "ACCEPTED") && (
                     <button
                       onClick={async () => {
-                        try {
-                          await api.cancelServiceRequest(sr.id);
-                          showToast("info", "Service booking cancelled");
-                          fetchData();
-                        } catch (err) {
-                          showToast("error", err.message || "Failed to cancel service");
-                        }
+                        await api.removeFavorite(fav.id);
+                        showToast("info", "Removed from favorites");
+                        fetchData();
                       }}
-                      className="btn-danger btn-xs"
+                      style={{ background: "none", border: "none", color: "#e11d48", cursor: "pointer" }}
                     >
-                      <span>Cancel Booking</span>
+                      <X size={16} />
                     </button>
-                  )}
-                  {["ACCEPTED", "IN_PROGRESS", "COMPLETED"].includes(sr.status) && (
-                    <button
-                      onClick={() => handlePayServiceRequest(sr.id)}
-                      className="btn-primary"
-                    >
-                      <CreditCard className="w-3.5 h-3.5" />
-                      <span>Pay Service Fee</span>
-                    </button>
-                  )}
-                  {sr.status === "COMPLETED" && (
-                    <button
-                      onClick={() => onOpenReview({ entrepreneur_id: sr.entrepreneur_id, service_request_id: sr.id })}
-                      className="btn-outline"
-                    >
-                      <Star className="w-3.5 h-3.5" />
-                      <span>Rate Service</span>
-                    </button>
-                  )}
+                  </div>
+                  <h4 style={{ margin: "0 0 0.35rem 0", color: "#0f172a", fontSize: "1.05rem" }}>
+                    {fav.product_name || fav.service_title || fav.business_name}
+                  </h4>
+                  <p style={{ fontSize: "0.85rem", color: "#64748b", margin: "0 0 0.75rem 0" }}>
+                    {fav.business_name ? `By ${fav.business_name}` : "Local Craft"}
+                  </p>
+                  <div style={{ fontWeight: 800, color: "#d97706", fontSize: "1.1rem" }}>
+                    {fav.product_price ? `₹${fav.product_price}` : fav.service_price ? `₹${fav.service_price}` : "Verified Artisan"}
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
-
-          {requests.length === 0 && !loading && (
-            <div className="glass-panel empty-state-box">
-              <Calendar className="empty-icon" />
-              <p className="empty-text">No service requests booked yet.</p>
+              ))}
             </div>
           )}
         </div>
+      )}
+
+      {/* CHAT MODAL */}
+      {chatPartner && (
+        <ChatModal
+          partner={chatPartner}
+          currentUser={currentUser}
+          onClose={() => setChatPartner(null)}
+        />
       )}
     </div>
   );

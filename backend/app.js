@@ -25,6 +25,9 @@ app.use("/reviews", require("./routes/reviewRoutes"));
 app.use("/favorites", require("./routes/favoriteRoutes"));
 app.use("/notifications", require("./routes/notificationRoutes"));
 app.use("/complaints", require("./routes/complaintRoutes"));
+app.use("/portfolio", require("./routes/portfolioRoutes"));
+app.use("/quotes", require("./routes/quoteRoutes"));
+app.use("/messages", require("./routes/messageRoutes"));
 app.use("/admin", require("./routes/adminRoutes"));
 
 app.use((req,res)=>res.status(404).json({success:false,message:"Endpoint not found"}));

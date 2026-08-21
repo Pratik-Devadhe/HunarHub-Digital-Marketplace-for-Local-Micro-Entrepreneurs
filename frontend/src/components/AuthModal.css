@@ -1,23 +1,30 @@
 /* AuthModal Component Styles */
 .auth-modal-overlay {
   position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   inset: 0;
-  z-index: 50;
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 1.5rem 1rem;
   background: rgba(4, 7, 13, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  overflow-y: auto;
 }
 
 .auth-modal-card {
   width: 100%;
   max-width: 32rem;
+  margin: auto;
   padding: 2rem;
   position: relative;
-  overflow: hidden;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
 }
 
 .auth-modal-glow {

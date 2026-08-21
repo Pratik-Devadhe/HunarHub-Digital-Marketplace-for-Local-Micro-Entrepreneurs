@@ -3,6 +3,21 @@ const {httpError,sendError,id}=require("../utils/http");
 
 const getEid=async(c,userId)=>{const r=await c.query("SELECT id FROM entrepreneur_profiles WHERE user_id=$1",[userId]);if(!r.rowCount)throw httpError("Entrepreneur profile not found",404);return r.rows[0].id};
 
+const getAvailabilityByEntrepreneurId = async (req, res) => {
+  try {
+    const epId = id(req.params.id, "entrepreneur id");
+    const rows = await withTransaction(async (c) =>
+      (await c.query(
+        "SELECT * FROM entrepreneur_availability WHERE entrepreneur_id = $1 ORDER BY day_of_week, start_time",
+        [epId]
+      )).rows
+    );
+    res.json({ success: true, availability: rows });
+  } catch (e) {
+    sendError(res, e);
+  }
+};
+
 const getAvailability=async(req,res)=>{try{
  const rows=await withTransaction(async c=>(await c.query(
   `SELECT ea.* FROM entrepreneur_availability ea JOIN entrepreneur_profiles ep ON ep.id=ea.entrepreneur_id
@@ -54,4 +69,4 @@ const deleteAvailability=async(req,res)=>{try{
  res.json({success:true,message:"Availability deleted"});
 }catch(e){sendError(res,e)}};
 
-module.exports={getAvailability,addAvailability,updateAvailability,deleteAvailability};
+module.exports={getAvailabilityByEntrepreneurId,getAvailability,addAvailability,updateAvailability,deleteAvailability};

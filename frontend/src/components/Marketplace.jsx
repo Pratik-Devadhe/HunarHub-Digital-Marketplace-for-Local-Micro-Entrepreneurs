@@ -1,6 +1,38 @@
 import React, { useState } from "react";
-import { Star, MapPin, Clock, Tag, ShoppingBag, Calendar, CheckCircle2, Award, ChevronRight, ShieldCheck, Filter, RotateCcw, MessageSquareQuote } from "lucide-react";
+import {
+  Star,
+  MapPin,
+  Clock,
+  ShoppingBag,
+  Calendar,
+  ShieldCheck,
+  ChevronRight,
+  Filter,
+  RotateCcw,
+  MessageSquareQuote,
+  Search,
+  Sparkles,
+  Send,
+  PhoneCall,
+  ThumbsUp,
+  Users,
+  ShieldAlert,
+  Store,
+  ArrowRight,
+  Zap,
+  List,
+  Map as MapIcon,
+  Award,
+  CheckCircle,
+  MessageSquare,
+  Eye,
+  SlidersHorizontal
+} from "lucide-react";
+import ArtisanProfileModal from "./ArtisanProfileModal";
+import ChatModal from "./ChatModal";
+import ArtisanMapView from "./ArtisanMapView";
 import "./Marketplace.css";
+import homeImage from "../assets/home.png";
 
 export default function Marketplace({
   categories,
@@ -9,28 +41,40 @@ export default function Marketplace({
   products,
   selectedCategory,
   setSelectedCategory,
+  selectedCity,
+  setSelectedCity,
   searchQuery,
   onBookService,
+  onOpenQuoteWizard,
   onAddToCart,
-  loading
+  loading,
+  currentUser,
+  showToast
 }) {
-  const [activeTab, setActiveTab] = useState("services"); // "services" | "products" | "entrepreneurs"
-  const [selectedCity, setSelectedCity] = useState("");
+  const [activeTab, setActiveTab] = useState("services"); // "services" | "entrepreneurs" | "products"
+  const [viewMode, setViewMode] = useState("list"); // "list" | "map"
   const [selectedMinRating, setSelectedMinRating] = useState("");
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [sortBy, setSortBy] = useState("recommended");
+  const [heroSearch, setHeroSearch] = useState("");
+  
+  // Modal states
+  const [selectedArtisanForProfile, setSelectedArtisanForProfile] = useState(null);
+  const [chatPartner, setChatPartner] = useState(null);
 
-  // Extract unique cities from entrepreneurs
+  // Extract unique cities
   const availableCities = Array.from(
     new Set(entrepreneurs.map((e) => e.city).filter(Boolean))
   );
 
-  // Map entrepreneur cities for service matching
   const epCityMap = {};
   entrepreneurs.forEach((e) => {
     if (e.id) epCityMap[e.id] = e.city;
   });
 
-  // Filter and Sort Services
+  const effectiveSearch = searchQuery || heroSearch;
+
+  // Filter & Sort Services
   const filteredServices = services
     .filter((s) => {
       const matchesCat = !selectedCategory || String(s.category_id) === String(selectedCategory);
@@ -38,10 +82,11 @@ export default function Marketplace({
       const matchesCity = !selectedCity || sCity.toLowerCase() === selectedCity.toLowerCase();
       const rating = Number(s.average_rating || 4.9);
       const matchesRating = !selectedMinRating || rating >= Number(selectedMinRating);
-      const matchesSearch = !searchQuery || 
-        s.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        s.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.business_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = !effectiveSearch ||
+        s.title?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
+        s.description?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
+        s.business_name?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
+        s.category_name?.toLowerCase().includes(effectiveSearch.toLowerCase());
       return matchesCat && matchesCity && matchesRating && matchesSearch;
     })
     .sort((a, b) => {
@@ -51,7 +96,7 @@ export default function Marketplace({
       return 0;
     });
 
-  // Filter and Sort Products
+  // Filter & Sort Products
   const filteredProducts = products
     .filter((p) => {
       const matchesCat = !selectedCategory || String(p.category_id) === String(selectedCategory);
@@ -59,80 +104,200 @@ export default function Marketplace({
       const matchesCity = !selectedCity || pCity.toLowerCase() === selectedCity.toLowerCase();
       const rating = Number(p.average_rating || 4.9);
       const matchesRating = !selectedMinRating || rating >= Number(selectedMinRating);
-      const matchesSearch = !searchQuery || 
-        p.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        p.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.business_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = !effectiveSearch ||
+        p.name?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
+        p.description?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
+        p.business_name?.toLowerCase().includes(effectiveSearch.toLowerCase());
       return matchesCat && matchesCity && matchesRating && matchesSearch;
     })
     .sort((a, b) => {
       if (sortBy === "price_asc") return Number(a.price) - Number(b.price);
       if (sortBy === "price_desc") return Number(b.price) - Number(a.price);
-      if (sortBy === "rating_desc") return Number(b.average_rating || 4.9) - Number(a.average_rating || 4.9);
+      if (sortBy === "rating_desc") return Number(p.average_rating || 4.9) - Number(a.average_rating || 4.9);
       return 0;
     });
 
-  // Filter and Sort Entrepreneurs
+  // Filter & Sort Entrepreneurs
   const filteredEntrepreneurs = entrepreneurs
     .filter((e) => {
+      const matchesCat = !selectedCategory || String(e.category_id) === String(selectedCategory);
       const matchesCity = !selectedCity || e.city?.toLowerCase() === selectedCity.toLowerCase();
       const rating = Number(e.average_rating || 4.9);
       const matchesRating = !selectedMinRating || rating >= Number(selectedMinRating);
-      const matchesSearch = !searchQuery || 
-        e.business_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.city?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCity && matchesRating && matchesSearch;
+      const matchesVerified = !verifiedOnly || (e.is_identity_verified || e.is_artisan_verified || e.is_business_verified);
+      const matchesSearch = !effectiveSearch ||
+        e.business_name?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
+        e.full_name?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
+        e.city?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
+        e.bio?.toLowerCase().includes(effectiveSearch.toLowerCase());
+      return matchesCat && matchesCity && matchesRating && matchesVerified && matchesSearch;
     })
     .sort((a, b) => {
       if (sortBy === "rating_desc") return Number(b.average_rating || 4.9) - Number(a.average_rating || 4.9);
+      if (sortBy === "experience") return Number(b.experience_years || 0) - Number(a.experience_years || 0);
       return 0;
     });
 
-  const hasActiveFilters = Boolean(selectedCategory || selectedCity || selectedMinRating || sortBy !== "recommended" || searchQuery);
+  const hasActiveFilters = Boolean(selectedCategory || selectedCity || selectedMinRating || verifiedOnly || sortBy !== "recommended" || effectiveSearch);
 
   const resetAllFilters = () => {
     setSelectedCategory(null);
     setSelectedCity("");
     setSelectedMinRating("");
+    setVerifiedOnly(false);
     setSortBy("recommended");
+    setHeroSearch("");
   };
 
   return (
     <div className="marketplace-container">
-
-      {/* Hero Banner Section */}
-      <div className="hero-banner">
+      {/* SULEKHA HERO SECTION */}
+      <div className="sulekha-hero-banner">
         <div className="hero-glow-orb" />
-        <div className="hero-content">
-          <div className="hero-badge">
-            <Award className="hero-badge-icon" />
-            <span>Verified Local Micro-Entrepreneurs</span>
+
+        <div className="sulekha-hero-content">
+          <div className="sulekha-hero-badge">
+            <Sparkles className="hero-badge-icon text-amber" />
+            <span>India's Premier Local Expert & Micro-Entrepreneur Platform</span>
           </div>
-          <h1 className="hero-title">
-            Discover & Book <span className="hero-title-highlight">Local Craft Experts</span>
+
+          <h1 className="sulekha-hero-title">
+            Get Matched with Top <br />
+            <span className="hero-title-highlight">
+              Verified Local Experts
+            </span> Near You
           </h1>
-          <p className="hero-subtitle">
-            Every Skill Has a Story <br /> Every Skill Deserves an Opportunity
+
+          <p className="sulekha-hero-subtitle">
+            Compare free price quotes for Cobbler Resoling, Earthen Pottery, Designer Tailoring, Appliance Servicing, Shifting, Painting, and Craft Work in your city.
           </p>
-          <div className="hero-actions">
-            <button onClick={() => setActiveTab("services")} className="btn-primary">
-              <span>Explore Services</span>
-              <ChevronRight className="btn-icon-right" />
+
+          {/* SULEKHA HERO SEARCH & LEAD WIDGET */}
+          <div className="sulekha-search-widget">
+            <div className="search-input-field">
+              <Search className="widget-icon text-amber" />
+              <input
+                type="text"
+                placeholder="What service do you need? (e.g. shoe resoling, tailor, AC repair...)"
+                value={heroSearch}
+                onChange={(e) => setHeroSearch(e.target.value)}
+              />
+            </div>
+
+            <div className="city-select-field">
+              <MapPin className="widget-icon text-emerald" />
+              <select
+                value={selectedCity}
+                onChange={(e) => setSelectedCity(e.target.value)}
+              >
+                <option value="">All Cities</option>
+                {availableCities.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+                <option value="Mumbai">Mumbai</option>
+                <option value="Pune">Pune</option>
+                <option value="Delhi">Delhi</option>
+                <option value="Bengaluru">Bengaluru</option>
+                <option value="Jaipur">Jaipur</option>
+                <option value="Varanasi">Varanasi</option>
+              </select>
+            </div>
+
+            <button
+              onClick={() => onOpenQuoteWizard?.()}
+              className="btn-quote-hero"
+            >
+              <Send size={16} />
+              <span>Get Free Quotes</span>
             </button>
-            <button onClick={() => setActiveTab("products")} className="btn-secondary">
-              <span>Browse Products</span>
-            </button>
+          </div>
+
+          {/* POPULAR QUICK CATEGORY PILLS */}
+          <div className="hero-quick-pills">
+            <span className="pills-label">Popular Crafts:</span>
+            {[
+              { label: "Leather & Boots", catId: 1 },
+              { label: "Pottery & Matkas", catId: 2 },
+              { label: "Tailoring & Blouse", catId: 3 },
+              { label: "AC & Appliance Fix", catId: 4 },
+              { label: "House Shifting", catId: 6 },
+              { label: "Home Painting", catId: 8 }
+            ].map((pill) => (
+              <button
+                key={pill.label}
+                className={`quick-pill ${selectedCategory === String(pill.catId) ? "active" : ""}`}
+                onClick={() => setSelectedCategory(selectedCategory === String(pill.catId) ? null : String(pill.catId))}
+              >
+                {pill.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="hero-image-wrapper">
+          <img
+            src={homeImage}
+            alt="Local service provider artisan"
+            className="sulekha-hero-image"
+          />
+          <div className="hero-image-badge-floating">
+            <ShieldCheck className="text-emerald" size={24} />
+            <div>
+              <strong>100% Verified Artisans</strong>
+              <span>Fast 15-Min Lead Connect</span>
+            </div>
           </div>
         </div>
       </div>
 
-      
+      {/* POPULAR CATEGORIES GRID */}
+      <div className="sulekha-categories-section">
+        <div className="section-header-row">
+          <div>
+            <h2 className="section-title">Explore Top Artisan Categories</h2>
+            <p className="section-subtitle">Select a category to connect with top-rated verified micro-entrepreneurs & get free quotes.</p>
+          </div>
+          {selectedCategory && (
+            <button onClick={() => setSelectedCategory(null)} className="btn-link-amber">
+              Show All Categories
+            </button>
+          )}
+        </div>
+
+        <div className="categories-cards-grid">
+          {categories.map((cat) => {
+            const count = services.filter((s) => String(s.category_id) === String(cat.id)).length;
+            const isSelected = selectedCategory === String(cat.id);
+            return (
+              <div
+                key={cat.id}
+                className={`category-card-box ${isSelected ? "selected" : ""}`}
+                onClick={() => setSelectedCategory(isSelected ? null : String(cat.id))}
+              >
+                <div className="category-card-top">
+                  <span className="category-emoji-badge"><Award size={20} color="#d97706" /></span>
+                  <span className="category-count-pill">{count > 0 ? `${count}+ Services` : "Verified Experts"}</span>
+                </div>
+                <h3 className="category-card-name">{cat.name}</h3>
+                <p className="category-card-desc">{cat.description}</p>
+                <div className="category-card-footer">
+                  <span className="category-action-link">
+                    Get Free Quotes <ChevronRight size={14} />
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* COMPACT FILTER BAR */}
       <div className="glass-panel compact-filter-bar">
         <div className="filter-bar-header">
           <div className="filter-bar-title">
-            <Filter className="category-icon" />
-            <span>Refine Marketplace Search</span>
+            <Filter className="category-icon text-amber" />
+            <span>Filter Verified Providers & Services</span>
+            {selectedCity && <span className="city-pill">{selectedCity}</span>}
           </div>
           {hasActiveFilters && (
             <button onClick={resetAllFilters} className="reset-filters-btn">
@@ -144,13 +309,13 @@ export default function Marketplace({
         <div className="filter-dropdowns-row">
           {/* Category Dropdown */}
           <div className="filter-select-group">
-            <label className="filter-label">Craft Category</label>
+            <label className="filter-label">Service Category</label>
             <select
               value={selectedCategory || ""}
               onChange={(e) => setSelectedCategory(e.target.value || null)}
               className="filter-select-control"
             >
-              <option value="">🌟 All Categories (All Services Open)</option>
+              <option value="">All Categories</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
@@ -161,24 +326,24 @@ export default function Marketplace({
 
           {/* Location Dropdown */}
           <div className="filter-select-group">
-            <label className="filter-label">City / Location</label>
+            <label className="filter-label">City / Region</label>
             <select
               value={selectedCity}
               onChange={(e) => setSelectedCity(e.target.value)}
               className="filter-select-control"
             >
-              <option value="">📍 All Cities & Regions</option>
+              <option value="">All Cities & Regions</option>
               {availableCities.map((city) => (
                 <option key={city} value={city}>
-                  📍 {city}
+                  {city}
                 </option>
               ))}
-              <option value="Mumbai">📍 Mumbai</option>
-              <option value="Pune">📍 Pune</option>
-              <option value="Delhi">📍 Delhi</option>
-              <option value="Bengaluru">📍 Bengaluru</option>
-              <option value="Kolkata">📍 Kolkata</option>
-              <option value="Jaipur">📍 Jaipur</option>
+              <option value="Mumbai">Mumbai</option>
+              <option value="Pune">Pune</option>
+              <option value="Delhi">Delhi</option>
+              <option value="Bengaluru">Bengaluru</option>
+              <option value="Jaipur">Jaipur</option>
+              <option value="Varanasi">Varanasi</option>
             </select>
           </div>
 
@@ -190,14 +355,27 @@ export default function Marketplace({
               onChange={(e) => setSelectedMinRating(e.target.value)}
               className="filter-select-control"
             >
-              <option value="">⭐ All Ratings</option>
-              <option value="4.5">⭐ 4.5 & Above (Top Artisans)</option>
-              <option value="4.0">⭐ 4.0 & Above</option>
-              <option value="3.5">⭐ 3.5 & Above</option>
+              <option value="">All Ratings</option>
+              <option value="4.8">4.8 & Above (Top Rated)</option>
+              <option value="4.5">4.5 & Above</option>
+              <option value="4.0">4.0 & Above</option>
             </select>
           </div>
 
-          {/* Price & Rating Sort Dropdown */}
+          {/* Verified Only Checkbox */}
+          <div className="filter-select-group" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1.2rem" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", fontSize: "0.88rem", fontWeight: 600, color: "#334155" }}>
+              <input
+                type="checkbox"
+                checked={verifiedOnly}
+                onChange={(e) => setVerifiedOnly(e.target.checked)}
+                style={{ accentColor: "#d97706" }}
+              />
+              Verified Badges Only
+            </label>
+          </div>
+
+          {/* Sort Dropdown */}
           <div className="filter-select-group">
             <label className="filter-label">Sort By</label>
             <select
@@ -206,47 +384,70 @@ export default function Marketplace({
               className="filter-select-control"
             >
               <option value="recommended">Featured / Recommended</option>
+              <option value="rating_desc">Highest Rated Experts</option>
+              <option value="experience">Most Experienced</option>
               <option value="price_asc">Price: Low to High</option>
               <option value="price_desc">Price: High to Low</option>
-              <option value="rating_desc">Highest Rated</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Main Content Tabs Header */}
+      {/* MAIN CONTENT TABS BAR & VIEW MODE TOGGLE */}
       <div className="marketplace-tabs-bar">
         <div className="tab-selector-group">
           <button
             onClick={() => setActiveTab("services")}
             className={`tab-btn ${activeTab === "services" ? "active" : ""}`}
           >
-            🛠️ Craft Services ({filteredServices.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("products")}
-            className={`tab-btn ${activeTab === "products" ? "active" : ""}`}
-          >
-            🛍️ Handmade Products ({filteredProducts.length})
+            Local Services ({filteredServices.length})
           </button>
           <button
             onClick={() => setActiveTab("entrepreneurs")}
             className={`tab-btn ${activeTab === "entrepreneurs" ? "active" : ""}`}
           >
-            👨‍🎨 Verified Artisans ({filteredEntrepreneurs.length})
+            Verified Artisans ({filteredEntrepreneurs.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("products")}
+            className={`tab-btn ${activeTab === "products" ? "active" : ""}`}
+          >
+            Handcrafted Products ({filteredProducts.length})
           </button>
         </div>
 
-        <span className="results-count-badge">
-          Showing {activeTab === "services" ? filteredServices.length : activeTab === "products" ? filteredProducts.length : filteredEntrepreneurs.length} available items
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          {/* View Mode Switcher */}
+          {activeTab === "entrepreneurs" && (
+            <div style={{ display: "flex", background: "#e2e8f0", padding: "0.25rem", borderRadius: "10px", gap: "0.25rem" }}>
+              <button
+                className={`view-toggle-btn ${viewMode === "list" ? "active" : ""}`}
+                style={{ padding: "0.4rem 0.75rem", border: "none", borderRadius: "8px", background: viewMode === "list" ? "#ffffff" : "transparent", color: viewMode === "list" ? "#0f172a" : "#64748b", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.85rem" }}
+                onClick={() => setViewMode("list")}
+              >
+                <List size={14} /> List View
+              </button>
+              <button
+                className={`view-toggle-btn ${viewMode === "map" ? "active" : ""}`}
+                style={{ padding: "0.4rem 0.75rem", border: "none", borderRadius: "8px", background: viewMode === "map" ? "#ffffff" : "transparent", color: viewMode === "map" ? "#0f172a" : "#64748b", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.85rem" }}
+                onClick={() => setViewMode("map")}
+              >
+                <MapIcon size={14} /> Map View
+              </button>
+            </div>
+          )}
+
+          <span className="results-count-badge">
+            Showing {activeTab === "services" ? filteredServices.length : activeTab === "entrepreneurs" ? filteredEntrepreneurs.length : filteredProducts.length} verified listings
+          </span>
+        </div>
       </div>
 
-      {/* Services Grid View */}
+      {/* SERVICES TAB VIEW */}
       {activeTab === "services" && (
         <div className="catalog-grid-4">
           {filteredServices.map((svc) => (
-            <div key={svc.id} className="glass-panel catalog-card">
+            <div key={svc.id} className="glass-panel catalog-card sulekha-provider-card">
               <div className="catalog-card-body">
                 <div className="card-top-header">
                   <span className="badge badge-accepted">
@@ -255,6 +456,7 @@ export default function Marketplace({
                   <div className="rating-pill">
                     <Star className="rating-star-icon" />
                     <span>{Number(svc.average_rating || 4.9).toFixed(1)}</span>
+                    <span className="reviews-count">({svc.reviews_count || 120})</span>
                   </div>
                 </div>
 
@@ -266,28 +468,41 @@ export default function Marketplace({
                   {svc.description}
                 </p>
 
-                <div className="card-meta-row">
-                  <span className="meta-item">
-                    <MapPin className="meta-icon text-amber" />
-                    <span className="meta-business-name">{svc.business_name || "Local Artisan"}</span>
-                  </span>
-                  <span className="meta-item">
-                    <Clock className="meta-icon" />
-                    <span>~{svc.estimated_duration || 45}m</span>
-                  </span>
+                {/* Expert Profile Banner */}
+                <div className="provider-sub-box">
+                  <div className="provider-top-row">
+                    <span className="provider-name">{svc.business_name || "Verified Expert"}</span>
+                    <span className="sulekha-verified-pill">
+                      <ShieldCheck size={12} /> Verified Expert
+                    </span>
+                  </div>
+                  <div className="provider-meta-row">
+                    <span className="meta-item">
+                      <MapPin className="meta-icon text-amber" />
+                      <span>{svc.city || "Mumbai"}</span>
+                    </span>
+                    <span className="meta-item response-badge">
+                      <Zap size={12} className="text-amber" />
+                      <span>{svc.response_time || "15 mins"}</span>
+                    </span>
+                    <span className="meta-item">
+                      <Clock className="meta-icon" />
+                      <span>~{svc.estimated_duration || 45}m</span>
+                    </span>
+                  </div>
                 </div>
               </div>
 
               <div className="card-bottom-footer">
                 <div>
-                  <span className="price-box-title">Est. Price</span>
+                  <span className="price-box-title">{svc.price_type === "STARTING_FROM" ? "Starting From" : "Est. Quote"}</span>
                   <span className="price-box-amount">₹{svc.price}</span>
                 </div>
                 <div className="card-actions-group">
                   <button
-                    onClick={() => onBookService(svc, "quote")}
+                    onClick={() => onOpenQuoteWizard?.(svc)}
                     className="btn-secondary btn-quote-action"
-                    title="Get free quote from artisan"
+                    title="Get free quotes from verified experts"
                   >
                     <MessageSquareQuote className="btn-icon-left" />
                     <span>Get Quote</span>
@@ -303,16 +518,103 @@ export default function Marketplace({
               </div>
             </div>
           ))}
+
           {filteredServices.length === 0 && (
             <div className="empty-search-box">
-              <p>No craft services matched your search filters. All services remain open when filters are reset.</p>
+              <ShieldAlert style={{ width: "2.5rem", height: "2.5rem", color: "#F59E0B" }} />
+              <h3>No matching services found</h3>
+              <p>No verified service providers matched your filters in {selectedCity || "this region"}.</p>
               <button onClick={resetAllFilters} className="btn-secondary">Clear Filters & Show All</button>
             </div>
           )}
         </div>
       )}
 
-      {/* Products Grid View */}
+      {/* ENTREPRENEURS / EXPERTS TAB VIEW */}
+      {activeTab === "entrepreneurs" && (
+        viewMode === "map" ? (
+          <ArtisanMapView
+            artisans={filteredEntrepreneurs}
+            onSelectArtisan={(artisan) => setSelectedArtisanForProfile(artisan.id)}
+            onGetQuote={(artisan) => onOpenQuoteWizard?.(null, { id: artisan.category_id, name: artisan.business_name })}
+          />
+        ) : (
+          <div className="catalog-grid-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))' }}>
+            {filteredEntrepreneurs.map((ep) => (
+              <div key={ep.id} className="glass-panel catalog-card sulekha-expert-card">
+                <div className="expert-card-left">
+                  <img
+                    src={ep.profile_image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300"}
+                    alt={ep.business_name}
+                    className="expert-card-avatar"
+                  />
+                  <span className="expert-verified-badge">
+                    <ShieldCheck size={14} /> Verified Artisan
+                  </span>
+                </div>
+
+                <div className="expert-card-right">
+                  <div className="expert-header">
+                    <div>
+                      <h3 className="expert-business-title">{ep.business_name}</h3>
+                      <p className="expert-person-name">By {ep.full_name}</p>
+                    </div>
+                    <div className="rating-pill">
+                      <Star className="rating-star-icon" />
+                      <span>{Number(ep.average_rating || 4.9).toFixed(1)}</span>
+                    </div>
+                  </div>
+
+                  <div className="expert-tags-row">
+                    <span className="expert-tag-item"><MapPin size={12} /> {ep.city || "Mumbai"}</span>
+                    <span className="expert-tag-item"><Award size={12} /> {ep.experience_years || 10}+ Yrs Exp</span>
+                    <span className="expert-tag-item"><Zap size={12} /> {ep.response_time || "15 mins"}</span>
+                  </div>
+
+                  <p className="expert-bio">{ep.bio}</p>
+
+                  <div className="expert-actions-row">
+                    <button
+                      onClick={() => setSelectedArtisanForProfile(ep.id)}
+                      className="btn-secondary"
+                      title="View full portfolio and services"
+                    >
+                      <Eye size={14} />
+                      <span>View Profile</span>
+                    </button>
+                    <button
+                      onClick={() => setChatPartner(ep)}
+                      className="btn-secondary"
+                      title="Direct message artisan"
+                    >
+                      <MessageSquare size={14} />
+                      <span>Chat</span>
+                    </button>
+                    <button
+                      onClick={() => onOpenQuoteWizard?.(null, { id: ep.category_id, name: ep.business_name })}
+                      className="btn-primary"
+                    >
+                      <MessageSquareQuote size={14} />
+                      <span>Get Quote</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {filteredEntrepreneurs.length === 0 && (
+              <div className="empty-search-box">
+                <ShieldAlert style={{ width: "2.5rem", height: "2.5rem", color: "#F59E0B" }} />
+                <h3>No micro-entrepreneurs found</h3>
+                <p>No verified local artisans found matching criteria.</p>
+                <button onClick={resetAllFilters} className="btn-secondary">Clear Filters & Show All</button>
+              </div>
+            )}
+          </div>
+        )
+      )}
+
+      {/* PRODUCTS TAB VIEW */}
       {activeTab === "products" && (
         <div className="catalog-grid-4">
           {filteredProducts.map((prod) => (
@@ -356,6 +658,7 @@ export default function Marketplace({
               </div>
             </div>
           ))}
+
           {filteredProducts.length === 0 && (
             <div className="empty-search-box">
               <p>No products matched your search filters.</p>
@@ -365,57 +668,69 @@ export default function Marketplace({
         </div>
       )}
 
-      {/* Entrepreneurs Grid View */}
-      {activeTab === "entrepreneurs" && (
-        <div className="catalog-grid-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
-          {filteredEntrepreneurs.map((ep) => (
-            <div key={ep.id} className="glass-panel catalog-card" style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-              <img
-                src={ep.profile_image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300"}
-                alt={ep.business_name}
-                className="artisan-card-img"
-              />
-              <div className="artisan-info-box">
-                <div className="artisan-header-row">
-                  <div>
-                    <h3 className="card-title">
-                      {ep.business_name}
-                    </h3>
-                    <p className="artisan-subtitle">By {ep.full_name}</p>
-                  </div>
-                  <div className="rating-pill">
-                    <Star className="rating-star-icon" />
-                    <span>{Number(ep.average_rating || 4.9).toFixed(1)}</span>
-                  </div>
-                </div>
-
-                <p className="card-description">
-                  {ep.bio}
-                </p>
-
-                <div className="card-meta-row">
-                  <span className="meta-item bold">
-                    <MapPin className="meta-icon text-amber" />
-                    <span>{ep.city || "Mumbai"}, {ep.state || "Maharashtra"}</span>
-                  </span>
-                  <span className="meta-item bold">
-                    <ShieldCheck className="meta-icon text-emerald" />
-                    <span>{ep.experience_years || 15}+ Yrs Exp</span>
-                  </span>
-                </div>
-              </div>
+      {/* TRUST BANNER */}
+      <div className="sulekha-trust-banner">
+        <h2 className="trust-banner-title">Why Customers Trust HunarHub Micro-Entrepreneur Network</h2>
+        <div className="trust-grid-4">
+          <div className="trust-card">
+            <div className="trust-icon-circle bg-amber">
+              <Users size={24} />
             </div>
-          ))}
-          {filteredEntrepreneurs.length === 0 && (
-            <div className="empty-search-box">
-              <p>No micro-entrepreneurs found with selected criteria.</p>
-              <button onClick={resetAllFilters} className="btn-secondary">Clear Filters & Show All</button>
+            <h3>Verified Local Artisans</h3>
+            <p>Direct connect with cobblers, potters, tailors, carpenters, and appliance experts.</p>
+          </div>
+
+          <div className="trust-card">
+            <div className="trust-icon-circle bg-emerald">
+              <ShieldCheck size={24} />
             </div>
-          )}
+            <h3>Multi-Criteria Trust Badges</h3>
+            <p>Identity, phone, artisan skill, and business registration verified.</p>
+          </div>
+
+          <div className="trust-card">
+            <div className="trust-icon-circle bg-cyan">
+              <Zap size={24} />
+            </div>
+            <h3>Fast Response Quotes</h3>
+            <p>Get custom price estimates and direct messaging from local experts.</p>
+          </div>
+
+          <div className="trust-card">
+            <div className="trust-icon-circle bg-purple">
+              <ThumbsUp size={24} />
+            </div>
+            <h3>100% Free Lead Quotes</h3>
+            <p>Compare price estimates with zero hidden charges or obligations.</p>
+          </div>
         </div>
+      </div>
+
+      {/* MODALS */}
+      {selectedArtisanForProfile && (
+        <ArtisanProfileModal
+          artisanId={selectedArtisanForProfile}
+          onClose={() => setSelectedArtisanForProfile(null)}
+          onRequestService={(artisan, svc) => {
+            setSelectedArtisanForProfile(null);
+            if (svc) onBookService(svc, "book");
+            else onOpenQuoteWizard?.(null, { id: artisan?.category_id, name: artisan?.business_name });
+          }}
+          onOpenChat={(artisan) => {
+            setSelectedArtisanForProfile(null);
+            setChatPartner(artisan);
+          }}
+          showToast={showToast}
+        />
       )}
 
+      {chatPartner && (
+        <ChatModal
+          partner={chatPartner}
+          currentUser={currentUser}
+          onClose={() => setChatPartner(null)}
+        />
+      )}
     </div>
   );
 }
-

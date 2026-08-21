@@ -1,16 +1,25 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Calendar, Clock, MapPin, FileText, CheckCircle } from "lucide-react";
 import "./ServiceBookingModal.css";
 
 export default function ServiceBookingModal({ service, mode = "book", isOpen, onClose, onSubmitBooking, showToast }) {
-  if (!isOpen || !service) return null;
-
   const todayStr = new Date().toISOString().split("T")[0];
   const [requestedDate, setRequestedDate] = useState(todayStr);
   const [requestedTime, setRequestedTime] = useState("10:00");
   const [address, setAddress] = useState("");
   const [customerNote, setCustomerNote] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setRequestedDate(new Date().toISOString().split("T")[0]);
+      setRequestedTime("10:00");
+      setAddress("");
+      setCustomerNote("");
+    }
+  }, [isOpen, service]);
+
+  if (!isOpen || !service) return null;
 
   const isQuote = mode === "quote";
 
@@ -43,14 +52,14 @@ export default function ServiceBookingModal({ service, mode = "book", isOpen, on
   };
 
   return (
-    <div className="modal-overlay-backdrop animate-fade-in">
-      <div className="glass-panel modal-dialog-card relative">
+    <div className="modal-overlay-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="glass-panel modal-dialog-card relative animate-modal-pop">
         <div className="modal-header-row">
           <div className="modal-header-title-box">
             <h2 className="modal-title">{isQuote ? "Request Free Service Quote" : "Book Artisan Service"}</h2>
             <p className="modal-subtitle">{service.business_name || "Verified Local Artisan"}</p>
           </div>
-          <button onClick={onClose} className="close-btn">
+          <button onClick={onClose} className="close-btn" aria-label="Close modal">
             <X className="w-5 h-5" />
           </button>
         </div>
