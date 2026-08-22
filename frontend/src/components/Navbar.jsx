@@ -1,6 +1,19 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ShoppingBag, Search, User, LogOut, Shield, Wrench, Package, Sparkles, MapPin, Store } from "lucide-react";
+import {
+  ShoppingBag,
+  Search,
+  User,
+  LogOut,
+  Shield,
+  Wrench,
+  Package,
+  Sparkles,
+  MapPin,
+  Store,
+  Menu,
+  X
+} from "lucide-react";
 import "./Navbar.css";
 
 export default function Navbar({
@@ -16,10 +29,16 @@ export default function Navbar({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isCurrent = (path) => {
     if (path === "/" && (location.pathname === "/" || location.pathname === "/marketplace")) return true;
     return location.pathname.startsWith(path) && path !== "/";
+  };
+
+  const handleNavClick = (path) => {
+    navigate(path);
+    setMobileMenuOpen(false);
   };
 
   return (
@@ -28,7 +47,7 @@ export default function Navbar({
         
         {/* Brand Logo & City Selector */}
         <div className="navbar-brand-wrapper">
-          <div className="navbar-brand" onClick={() => navigate("/")}>
+          <div className="navbar-brand" onClick={() => handleNavClick("/")}>
             <div className="brand-icon-box">
               <div className="brand-icon-inner">
                 H
@@ -36,15 +55,15 @@ export default function Navbar({
             </div>
             <div>
               <span className="brand-text-title">
-                HunarHub <span className="sulekha-tag">Expert Marketplace</span>
+                HunarHub <span className="sulekha-tag">Artisan Network</span>
               </span>
               <span className="brand-text-sub">
-                Verified Local Artisans & Micro-Entrepreneurs
+                Verified Local Experts & Micro-Entrepreneurs
               </span>
             </div>
           </div>
 
-          {/* Sulekha Header City Selector */}
+          {/* City Selector */}
           <div className="navbar-city-selector">
             <MapPin className="city-selector-icon" />
             <select
@@ -76,10 +95,10 @@ export default function Navbar({
           />
         </div>
 
-        {/* Navigation Links */}
-        <nav className="navbar-nav">
+        {/* Desktop Navigation Links */}
+        <nav className="navbar-nav desktop-only-nav">
           <button
-            onClick={() => navigate("/")}
+            onClick={() => handleNavClick("/")}
             className={`nav-link-btn ${isCurrent("/") ? "active" : ""}`}
           >
             <Sparkles className="nav-icon" />
@@ -88,7 +107,7 @@ export default function Navbar({
 
           {user && (
             <button
-              onClick={() => navigate("/activity")}
+              onClick={() => handleNavClick("/activity")}
               className={`nav-link-btn ${isCurrent("/activity") ? "active" : ""}`}
             >
               <Package className="nav-icon" />
@@ -98,7 +117,7 @@ export default function Navbar({
 
           {user && (user.role === "ENTREPRENEUR" || user.role === "ADMIN") && (
             <button
-              onClick={() => navigate("/entrepreneur")}
+              onClick={() => handleNavClick("/entrepreneur")}
               className={`nav-link-btn ${isCurrent("/entrepreneur") ? "active" : ""}`}
             >
               <Wrench className="nav-icon" />
@@ -108,7 +127,7 @@ export default function Navbar({
 
           {user && user.role === "ADMIN" && (
             <button
-              onClick={() => navigate("/admin")}
+              onClick={() => handleNavClick("/admin")}
               className={`nav-link-btn ${isCurrent("/admin") ? "active" : ""}`}
             >
               <Shield className="nav-icon" />
@@ -125,9 +144,9 @@ export default function Navbar({
             <button
               onClick={() => {
                 if (!user) onOpenAuth();
-                else navigate("/entrepreneur");
+                else handleNavClick("/entrepreneur");
               }}
-              className="btn-list-business"
+              className="btn-list-business desktop-only-btn"
               title="Register your business and start receiving local leads"
             >
               <Store size={15} />
@@ -136,7 +155,11 @@ export default function Navbar({
           )}
 
           {/* Cart Button */}
-          <button onClick={() => navigate("/cart")} className={`cart-icon-btn ${isCurrent("/cart") ? "active" : ""}`} title="View Shopping Cart">
+          <button
+            onClick={() => handleNavClick("/cart")}
+            className={`cart-icon-btn ${isCurrent("/cart") ? "active" : ""}`}
+            title="View Shopping Cart"
+          >
             <ShoppingBag className="cart-icon" />
             {cartCount > 0 && (
               <span className="cart-badge">
@@ -146,7 +169,7 @@ export default function Navbar({
           </button>
 
           {user ? (
-            <div className="user-profile-box">
+            <div className="user-profile-box desktop-only-user">
               <div className="user-info">
                 <span className="user-name">
                   {user.full_name}
@@ -160,14 +183,113 @@ export default function Navbar({
               </button>
             </div>
           ) : (
-            <button onClick={onOpenAuth} className="btn-primary">
+            <button onClick={onOpenAuth} className="btn-primary desktop-only-btn">
               <User className="nav-icon" />
               <span>Sign In</span>
             </button>
           )}
+
+          {/* Mobile Hamburger Toggle Button */}
+          <button
+            className="mobile-menu-toggle"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle navigation menu"
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
 
       </div>
+
+      {/* Mobile Slide-Down Dropdown Menu */}
+      {mobileMenuOpen && (
+        <div className="mobile-nav-dropdown glass-panel animate-fade-in">
+          {/* Search Field on Mobile */}
+          <div className="mobile-search-box mb-4">
+            <Search className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search services or artisans..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="mobile-nav-links">
+            <button
+              onClick={() => handleNavClick("/")}
+              className={`mobile-nav-item ${isCurrent("/") ? "active" : ""}`}
+            >
+              <Sparkles size={18} />
+              <span>Explore Marketplace</span>
+            </button>
+
+            {user && (
+              <button
+                onClick={() => handleNavClick("/activity")}
+                className={`mobile-nav-item ${isCurrent("/activity") ? "active" : ""}`}
+              >
+                <Package size={18} />
+                <span>My Activity & Bookings</span>
+              </button>
+            )}
+
+            {user && (user.role === "ENTREPRENEUR" || user.role === "ADMIN") && (
+              <button
+                onClick={() => handleNavClick("/entrepreneur")}
+                className={`mobile-nav-item ${isCurrent("/entrepreneur") ? "active" : ""}`}
+              >
+                <Wrench size={18} />
+                <span>Entrepreneur Hub</span>
+              </button>
+            )}
+
+            {user && user.role === "ADMIN" && (
+              <button
+                onClick={() => handleNavClick("/admin")}
+                className={`mobile-nav-item ${isCurrent("/admin") ? "active" : ""}`}
+              >
+                <Shield size={18} />
+                <span>Admin Panel</span>
+              </button>
+            )}
+
+            {(!user || user.role !== "ENTREPRENEUR") && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (!user) onOpenAuth();
+                  else handleNavClick("/entrepreneur");
+                }}
+                className="btn-list-business w-full justify-center py-3"
+              >
+                <Store size={18} />
+                <span>List Business <strong>FREE</strong></span>
+              </button>
+            )}
+
+            {user ? (
+              <div className="mobile-user-profile-bar mt-4 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-white">{user.full_name}</div>
+                    <div className="text-xs text-amber font-semibold uppercase">{user.role}</div>
+                  </div>
+                  <button onClick={() => { setMobileMenuOpen(false); onLogout(); }} className="btn-danger btn-sm">
+                    <LogOut size={14} />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => { setMobileMenuOpen(false); onOpenAuth(); }} className="btn-primary w-full justify-center mt-3">
+                <User size={18} />
+                <span>Sign In to HunarHub</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }

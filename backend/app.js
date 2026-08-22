@@ -34,6 +34,16 @@ app.use("/admin", require("./routes/adminRoutes"));
 
 app.use((req,res)=>res.status(404).json({success:false,message:"Endpoint not found"}));
 
+// Centralized Global Error Handler Middleware
+app.use((err, req, res, next) => {
+  console.error("Central Error Handler:", err);
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
+    success: false,
+    message: err.message || "Internal server error"
+  });
+});
+
 app.listen(port, () => {
     console.log(`Hunarhub Backend server running on port ${port}`);
 });

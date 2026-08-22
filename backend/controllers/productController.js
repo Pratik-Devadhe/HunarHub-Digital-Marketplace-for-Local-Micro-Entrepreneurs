@@ -3,22 +3,76 @@ const {httpError,sendError,id}=require("../utils/http");
 
 const epId=async(c,userId)=>{const r=await c.query("SELECT id FROM entrepreneur_profiles WHERE user_id=$1",[userId]);if(!r.rowCount)throw httpError("Entrepreneur profile not found",404);return r.rows[0].id};
 
-const getProducts=async(req,res)=>{try{
- const vals=[];const w=["p.is_available=true"];let n=1;
- if(req.query.category_id){w.push(`p.category_id=$${n++}`);vals.push(id(req.query.category_id,"category id"))}
- if(req.query.entrepreneur_id){w.push(`p.entrepreneur_id=$${n++}`);vals.push(id(req.query.entrepreneur_id,"entrepreneur id"))}
- if(req.query.min_price){w.push(`p.price >= $${n++}`);vals.push(Number(req.query.min_price))}
- if(req.query.max_price){w.push(`p.price <= $${n++}`);vals.push(Number(req.query.max_price))}
- if(req.query.search){w.push(`(p.name ILIKE $${n} OR p.description ILIKE $${n})`);vals.push(`%${req.query.search}%`);n++}
- const rows=await withTransaction(async c=>(await c.query(
-  `SELECT p.*,ep.business_name,u.full_name,
-   COALESCE(json_agg(json_build_object('id',pi.id,'image_url',pi.image_url,'is_primary',pi.is_primary))
-   FILTER(WHERE pi.id IS NOT NULL),'[]') images
-   FROM products p JOIN entrepreneur_profiles ep ON ep.id=p.entrepreneur_id JOIN users u ON u.id=ep.user_id
-   LEFT JOIN product_images pi ON pi.product_id=p.id
-   WHERE ${w.join(" AND ")} GROUP BY p.id,ep.business_name,u.full_name ORDER BY p.created_at DESC`,vals)).rows);
- res.json({success:true,products:rows});
-}catch(e){sendError(res,e)}};
+const getProducts = async (req, res) => {
+  try {
+    const vals = [];
+    const w = ["p.is_available = true"];
+    let n = 1;
+
+    if (req.query.category_id) {
+      w.push(`p.category_id = $${n++}`);
+      vals.push(id(req.query.category_id, "category id"));
+    }
+    if (req.query.entrepreneur_id) {
+      w.push(`p.entrepreneur_id = $${n++}`);
+      vals.push(id(req.query.entrepreneur_id, "entrepreneur id"));
+    }
+    if (req.query.min_price) {
+      w.push(`p.price >= $${n++}`);
+      vals.push(Number(req.query.min_price));
+    }
+    if (req.query.max_price) {
+      w.push(`p.price <= $${n++}`);
+      vals.push(Number(req.query.max_price));
+    }
+    if (req.query.search) {
+      w.push(`(p.name ILIKE $${n} OR p.description ILIKE $${n})`);
+      vals.push(`%${req.query.search}%`);
+      n++;
+    }
+
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit) || 50));
+    const offset = (page - 1) * limit;
+
+    const data = await withTransaction(async (c) => {
+      const countRes = await c.query(
+        `SELECT COUNT(*)::int as total FROM products p WHERE ${w.join(" AND ")}`,
+        vals
+      );
+      const total = countRes.rows[0]?.total || 0;
+
+      const productsRes = await c.query(
+        `SELECT p.*, ep.business_name, u.full_name,
+         COALESCE(json_agg(json_build_object('id', pi.id, 'image_url', pi.image_url, 'is_primary', pi.is_primary))
+         FILTER(WHERE pi.id IS NOT NULL), '[]') images
+         FROM products p
+         JOIN entrepreneur_profiles ep ON ep.id = p.entrepreneur_id
+         JOIN users u ON u.id = ep.user_id
+         LEFT JOIN product_images pi ON pi.product_id = p.id
+         WHERE ${w.join(" AND ")}
+         GROUP BY p.id, ep.business_name, u.full_name
+         ORDER BY p.created_at DESC
+         LIMIT $${n} OFFSET $${n + 1}`,
+        [...vals, limit, offset]
+      );
+
+      return {
+        products: productsRes.rows,
+        pagination: {
+          total,
+          page,
+          limit,
+          total_pages: Math.ceil(total / limit)
+        }
+      };
+    });
+
+    res.json({ success: true, ...data });
+  } catch (e) {
+    sendError(res, e);
+  }
+};
 
 const getProductById=async(req,res)=>{try{
  const row=await withTransaction(async c=>{const r=await c.query(

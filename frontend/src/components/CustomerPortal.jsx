@@ -286,23 +286,23 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
 
                 {/* EXPANDED QUOTES COMPARISON DRAWER */}
                 {isExpanded && (
-                  <div style={{ marginTop: "1.25rem", paddingTop: "1.25rem", borderTop: "1px solid #e2e8f0", background: "#f8fafc", padding: "1.25rem", borderRadius: "12px" }}>
-                    <h4 style={{ margin: "0 0 1rem 0", color: "#0f172a", fontSize: "1rem" }}>
+                  <div className="quotes-drawer-container">
+                    <h4 className="quotes-drawer-title">
                       Artisan Price Quotes & Completion Proposals
                     </h4>
 
                     {quotesLoading ? (
-                      <p style={{ color: "#64748b" }}>Loading received quotes...</p>
+                      <p className="text-dim">Loading received quotes...</p>
                     ) : quotes.length === 0 ? (
-                      <p style={{ color: "#64748b" }}>No quotes submitted by local artisans yet. Your request is visible in the local expert marketplace network!</p>
+                      <p className="text-dim">No quotes submitted by local artisans yet. Your request is visible in the local expert marketplace network!</p>
                     ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                      <div className="quotes-cards-stack">
                         {quotes.map((q) => (
-                          <div key={q.id} style={{ background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "12px", padding: "1rem" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+                          <div key={q.id} className="quote-proposal-card">
+                            <div className="quote-proposal-header">
                               <div>
-                                <h5 style={{ margin: "0 0 0.2rem 0", fontSize: "1.05rem", color: "#0f172a" }}>{q.business_name}</h5>
-                                <div style={{ fontSize: "0.85rem", color: "#64748b", display: "flex", gap: "0.75rem" }}>
+                                <h5 className="quote-artisan-name">{q.business_name}</h5>
+                                <div className="quote-artisan-meta">
                                   <span><Star size={14} fill="#f59e0b" color="#f59e0b" style={{ display: "inline" }} /> {q.average_rating || "4.9"} rating</span>
                                   <span>• {q.experience_years || 5}+ Yrs Exp</span>
                                   <span>• {q.city || "Mumbai"}</span>
@@ -310,18 +310,18 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
                               </div>
 
                               <div style={{ textAlign: "right" }}>
-                                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#d97706" }}>₹{q.proposed_price}</div>
-                                <div style={{ fontSize: "0.8rem", color: "#64748b" }}>Est. Delivery: {q.estimated_completion || "2 Days"}</div>
+                                <div className="quote-proposed-price">₹{q.proposed_price}</div>
+                                <div className="quote-completion-time">Est. Delivery: {q.estimated_completion || "2 Days"}</div>
                               </div>
                             </div>
 
                             {q.message && (
-                              <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.92rem", color: "#334155", fontStyle: "italic", background: "#f1f5f9", padding: "0.6rem 0.8rem", borderRadius: "8px" }}>
+                              <p className="quote-proposal-message">
                                 "{q.message}"
                               </p>
                             )}
 
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div className="quote-proposal-actions">
                               <button
                                 className="btn-sec-outline"
                                 style={{ padding: "0.45rem 0.85rem", fontSize: "0.82rem" }}
@@ -470,9 +470,9 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
               <p className="empty-text">No saved favorite artisans, services, or products yet.</p>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.25rem" }}>
+            <div className="favorites-grid">
               {favorites.map((fav) => (
-                <div key={fav.id} className="glass-panel" style={{ padding: "1.25rem", borderRadius: "16px", background: "#ffffff" }}>
+                <div key={fav.id} className="glass-panel favorite-card">
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
                     <span className="badge badge-accepted">
                       {fav.product_name ? "Product" : fav.service_title ? "Service" : "Artisan"}
@@ -488,13 +488,13 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
                       <X size={16} />
                     </button>
                   </div>
-                  <h4 style={{ margin: "0 0 0.35rem 0", color: "#0f172a", fontSize: "1.05rem" }}>
+                  <h4 style={{ margin: "0 0 0.35rem 0", color: "#FFFFFF", fontSize: "1.05rem" }}>
                     {fav.product_name || fav.service_title || fav.business_name}
                   </h4>
-                  <p style={{ fontSize: "0.85rem", color: "#64748b", margin: "0 0 0.75rem 0" }}>
+                  <p style={{ fontSize: "0.85rem", color: "#94A3B8", margin: "0 0 0.75rem 0" }}>
                     {fav.business_name ? `By ${fav.business_name}` : "Local Craft"}
                   </p>
-                  <div style={{ fontWeight: 800, color: "#d97706", fontSize: "1.1rem" }}>
+                  <div style={{ fontWeight: 800, color: "#F59E0B", fontSize: "1.1rem" }}>
                     {fav.product_price ? `₹${fav.product_price}` : fav.service_price ? `₹${fav.service_price}` : "Verified Artisan"}
                   </div>
                 </div>

@@ -494,7 +494,7 @@ export default function Marketplace({
               </div>
 
               <div className="card-bottom-footer">
-                <div>
+                <div className="price-box">
                   <span className="price-box-title">{svc.price_type === "STARTING_FROM" ? "Starting From" : "Est. Quote"}</span>
                   <span className="price-box-amount">₹{svc.price}</span>
                 </div>
@@ -668,6 +668,48 @@ export default function Marketplace({
         </div>
       )}
 
+      {/* HOW HUNARHUB WORKS */}
+      <div className="glass-panel" style={{ padding: "2.5rem", margin: "3rem 0", borderRadius: "1.5rem" }}>
+        <div className="section-header text-center" style={{ marginBottom: "2rem" }}>
+          <h2 className="section-title justify-center">How HunarHub Empowers Customers & Artisans</h2>
+          <p className="section-subtitle">A seamless 4-step process to discover, request, and receive verified local craft services.</p>
+        </div>
+
+        <div className="trust-grid-4">
+          <div className="trust-card">
+            <div className="trust-icon-circle bg-amber">
+              <Search size={24} />
+            </div>
+            <h3>1. Search Craft or Skill</h3>
+            <p>Browse nearby tailors, cobblers, potters, carpenters, and repair specialists in your city.</p>
+          </div>
+
+          <div className="trust-card">
+            <div className="trust-icon-circle bg-cyan">
+              <MessageSquareQuote size={24} />
+            </div>
+            <h3>2. Request Free Quotes</h3>
+            <p>Describe your job to get instant estimated quotes with zero hidden charges.</p>
+          </div>
+
+          <div className="trust-card">
+            <div className="trust-icon-circle bg-purple">
+              <MessageSquare size={24} />
+            </div>
+            <h3>3. Chat & Schedule</h3>
+            <p>Communicate directly with verified artisans to finalize service time and details.</p>
+          </div>
+
+          <div className="trust-card">
+            <div className="trust-icon-circle bg-emerald">
+              <CheckCircle size={24} />
+            </div>
+            <h3>4. Verified Completion</h3>
+            <p>Receive quality work directly at your doorstep and leave a verified customer review.</p>
+          </div>
+        </div>
+      </div>
+
       {/* TRUST BANNER */}
       <div className="sulekha-trust-banner">
         <h2 className="trust-banner-title">Why Customers Trust HunarHub Micro-Entrepreneur Network</h2>
@@ -703,6 +745,89 @@ export default function Marketplace({
             <h3>100% Free Lead Quotes</h3>
             <p>Compare price estimates with zero hidden charges or obligations.</p>
           </div>
+        </div>
+      </div>
+
+      {/* VERIFIED CUSTOMER REVIEWS */}
+      <div className="sulekha-reviews-section">
+        <div className="section-header-row">
+          <div>
+            <h2 className="section-title">Verified Customer Reviews</h2>
+            <p className="section-subtitle">Real feedback from satisfied customers who booked local artisans on HunarHub.</p>
+          </div>
+        </div>
+
+        <div className="reviews-cards-grid">
+          <div className="review-card-box">
+            <div className="review-card-header">
+              <strong>Priya Sharma</strong>
+              <span className="review-city">Pune</span>
+            </div>
+            <div className="review-stars">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} size={14} className="star-filled" />
+              ))}
+            </div>
+            <span className="review-service-tag">Designer Blouse Alteration</span>
+            <p className="review-comment">
+              "Found Ramesh Tailors on HunarHub. They fixed my wedding blouse fitting in just 2 hours! Excellent craft and polite behavior."
+            </p>
+            <div className="review-expert-ref">Artisan: Ramesh Tailors</div>
+          </div>
+
+          <div className="review-card-box">
+            <div className="review-card-header">
+              <strong>Amit Varma</strong>
+              <span className="review-city">Mumbai</span>
+            </div>
+            <div className="review-stars">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} size={14} className="star-filled" />
+              ))}
+            </div>
+            <span className="review-service-tag">Leather Boot Resoling</span>
+            <p className="review-comment">
+              "My formal leather shoes had worn-out soles. Precision Leather Works resoled them with genuine rubber soles at a fraction of showroom price."
+            </p>
+            <div className="review-expert-ref">Artisan: Precision Leather Works</div>
+          </div>
+
+          <div className="review-card-box">
+            <div className="review-card-header">
+              <strong>Sneha Kulkarni</strong>
+              <span className="review-city">Bengaluru</span>
+            </div>
+            <div className="review-stars">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} size={14} className="star-filled" />
+              ))}
+            </div>
+            <span className="review-service-tag">Handcrafted Earthen Matkas</span>
+            <p className="review-comment">
+              "Ordered beautiful terracotta clay pots for summer. Delivered safely with zero damage. Superb natural cooling."
+            </p>
+            <div className="review-expert-ref">Artisan: ClayCraft Artisans</div>
+          </div>
+        </div>
+      </div>
+
+      {/* BECOME AN ARTISAN PARTNER BANNER */}
+      <div className="sulekha-partner-banner">
+        <div className="partner-banner-content">
+          <span className="partner-badge">
+            <Store size={14} /> Become a Verified Partner
+          </span>
+          <h2>Are you a Local Micro-Entrepreneur or Artisan?</h2>
+          <p>
+            Join over 1,500+ verified cobblers, tailors, potters, appliance technicians, and carpenters receiving daily customer service leads across India. Zero hidden charges!
+          </p>
+          <button
+            onClick={() => onOpenQuoteWizard?.()}
+            className="btn-partner-cta"
+          >
+            <Store size={16} />
+            <span>List Your Business FREE</span>
+          </button>
         </div>
       </div>
 

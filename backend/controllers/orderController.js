@@ -29,10 +29,18 @@ const createOrder = async (req, res) => {
         return { p, q, subtotal };
       });
 
+      const isConfigured = Boolean(
+        process.env.RAZORPAY_KEY_ID &&
+        process.env.RAZORPAY_KEY_SECRET &&
+        !process.env.RAZORPAY_KEY_ID.includes("dummy") &&
+        !process.env.RAZORPAY_KEY_SECRET.includes("dummy")
+      );
+      const initialPaymentStatus = isConfigured ? "PENDING" : "NOT_AVAILABLE";
+
       const order = (await c.query(
         `INSERT INTO orders (customer_id, total_amount, status, payment_status, shipping_address)
-         VALUES ($1, $2, 'PENDING', 'PENDING', $3) RETURNING *`,
-        [req.user.id, total, shipping_address || null]
+         VALUES ($1, $2, 'PENDING', $3, $4) RETURNING *`,
+        [req.user.id, total, initialPaymentStatus, shipping_address || null]
       )).rows[0];
 
       for (const x of prepared) {

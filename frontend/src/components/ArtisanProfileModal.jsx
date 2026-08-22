@@ -265,17 +265,17 @@ export default function ArtisanProfileModal({ artisanId, onClose, onRequestServi
               {activeTab === "reviews" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                   {(!artisan.reviews || artisan.reviews.length === 0) ? (
-                    <p style={{ color: "#64748b", textAlign: "center" }}>No customer reviews yet.</p>
+                    <p style={{ color: "#94a3b8", textAlign: "center" }}>No customer reviews yet.</p>
                   ) : (
                     artisan.reviews.map((rev) => (
-                      <div key={rev.id} style={{ background: "#ffffff", border: "1px solid #e2e8f0", padding: "1.25rem", borderRadius: "12px" }}>
+                      <div key={rev.id} className="artisan-review-card">
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-                          <span style={{ fontWeight: 700, color: "#0f172a" }}>{rev.customer_name || "Verified Customer"}</span>
+                          <span style={{ fontWeight: 700, color: "#FFFFFF" }}>{rev.customer_name || "Verified Customer"}</span>
                           <span style={{ color: "#f59e0b", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.2rem" }}>
                             <Star size={14} fill="#f59e0b" /> {rev.rating}/5
                           </span>
                         </div>
-                        <p style={{ margin: 0, color: "#475569", fontSize: "0.92rem", lineHeight: 1.5 }}>{rev.comment}</p>
+                        <p style={{ margin: 0, color: "#CBD5E1", fontSize: "0.92rem", lineHeight: 1.5 }}>{rev.comment}</p>
                       </div>
                     ))
                   )}

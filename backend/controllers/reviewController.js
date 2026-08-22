@@ -39,15 +39,35 @@ const createReview = async (req, res) => {
         if (!p.rowCount || Number(p.rows[0].entrepreneur_id) !== Number(entrepreneur_id)) {
           throw httpError("Invalid product for this artisan", 400);
         }
-      }
 
-      if (service_request_id) {
+        // Verify customer has a completed order containing this product
+        const purchase = await c.query(
+          `SELECT 1 FROM orders o
+           JOIN order_items oi ON oi.order_id = o.id
+           WHERE o.customer_id = $1 AND oi.product_id = $2 AND o.status = 'COMPLETED'`,
+          [req.user.id, product_id]
+        );
+        if (!purchase.rowCount) {
+          throw httpError("Reviews can only be submitted for completed orders", 403);
+        }
+      } else if (service_request_id) {
         const s = await c.query(
           "SELECT id, customer_id, entrepreneur_id, status FROM service_requests WHERE id = $1",
           [service_request_id]
         );
         if (!s.rowCount || s.rows[0].customer_id !== req.user.id || s.rows[0].status !== "COMPLETED") {
-          throw httpError("Reviews can only be submitted for completed service requests", 409);
+          throw httpError("Reviews can only be submitted for completed service requests", 403);
+        }
+      } else {
+        // Direct artisan review: verify customer has either a completed service request or completed order with this artisan
+        const hasCompletedInteraction = await c.query(
+          `SELECT 1 FROM service_requests WHERE customer_id = $1 AND entrepreneur_id = $2 AND status = 'COMPLETED'
+           UNION
+           SELECT 1 FROM orders o JOIN order_items oi ON oi.order_id = o.id WHERE o.customer_id = $1 AND oi.entrepreneur_id = $2 AND o.status = 'COMPLETED'`,
+          [req.user.id, entrepreneur_id]
+        );
+        if (!hasCompletedInteraction.rowCount) {
+          throw httpError("Reviews can only be submitted after a verified completed transaction with this artisan", 403);
         }
       }
 

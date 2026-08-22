@@ -138,6 +138,19 @@ export default function ServiceBookingModal({ service, mode = "book", isOpen, on
             </div>
           </div>
 
+          {/* Payment Notice Banner */}
+          <div className="payment-notice-banner">
+            <div className="payment-notice-icon-box">
+              <CheckCircle className="w-5 h-5 text-emerald" />
+            </div>
+            <div>
+              <span className="payment-notice-title">Direct Artisan Booking Mode</span>
+              <p className="payment-notice-text">
+                Online gateway payment is currently disabled in demo environment. Your request will be directly sent to the artisan, and payment will be settled upon service completion.
+              </p>
+            </div>
+          </div>
+
           <div className="form-submit-box">
             <button type="submit" disabled={loading} className="btn-primary submit-btn">
               <CheckCircle className="w-4 h-4" />

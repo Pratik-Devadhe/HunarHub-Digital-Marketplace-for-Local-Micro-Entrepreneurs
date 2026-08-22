@@ -1,17 +1,62 @@
 const {withTransaction}=require("../utils/transaction");
 const {httpError,sendError,id}=require("../utils/http");
 
-const getServices=async(req,res)=>{try{
- const vals=[];const w=["s.is_active=true"];let n=1;
- if(req.query.category_id){w.push(`s.category_id=$${n++}`);vals.push(id(req.query.category_id,"category id"))}
- if(req.query.entrepreneur_id){w.push(`s.entrepreneur_id=$${n++}`);vals.push(id(req.query.entrepreneur_id,"entrepreneur id"))}
- if(req.query.search){w.push(`(s.title ILIKE $${n} OR s.description ILIKE $${n})`);vals.push(`%${req.query.search}%`);n++}
- const rows=await withTransaction(async c=>(await c.query(
-  `SELECT s.*,ep.business_name,u.full_name FROM services s
-   JOIN entrepreneur_profiles ep ON ep.id=s.entrepreneur_id JOIN users u ON u.id=ep.user_id
-   WHERE ${w.join(" AND ")} ORDER BY s.created_at DESC`,vals)).rows);
- res.json({success:true,services:rows});
-}catch(e){sendError(res,e)}};
+const getServices = async (req, res) => {
+  try {
+    const vals = [];
+    const w = ["s.is_active = true"];
+    let n = 1;
+
+    if (req.query.category_id) {
+      w.push(`s.category_id = $${n++}`);
+      vals.push(id(req.query.category_id, "category id"));
+    }
+    if (req.query.entrepreneur_id) {
+      w.push(`s.entrepreneur_id = $${n++}`);
+      vals.push(id(req.query.entrepreneur_id, "entrepreneur id"));
+    }
+    if (req.query.search) {
+      w.push(`(s.title ILIKE $${n} OR s.description ILIKE $${n})`);
+      vals.push(`%${req.query.search}%`);
+      n++;
+    }
+
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit) || 50));
+    const offset = (page - 1) * limit;
+
+    const data = await withTransaction(async (c) => {
+      const countRes = await c.query(
+        `SELECT COUNT(*)::int as total FROM services s WHERE ${w.join(" AND ")}`,
+        vals
+      );
+      const total = countRes.rows[0]?.total || 0;
+
+      const servicesRes = await c.query(
+        `SELECT s.*, ep.business_name, u.full_name FROM services s
+         JOIN entrepreneur_profiles ep ON ep.id = s.entrepreneur_id
+         JOIN users u ON u.id = ep.user_id
+         WHERE ${w.join(" AND ")} ORDER BY s.created_at DESC
+         LIMIT $${n} OFFSET $${n + 1}`,
+        [...vals, limit, offset]
+      );
+
+      return {
+        services: servicesRes.rows,
+        pagination: {
+          total,
+          page,
+          limit,
+          total_pages: Math.ceil(total / limit)
+        }
+      };
+    });
+
+    res.json({ success: true, ...data });
+  } catch (e) {
+    sendError(res, e);
+  }
+};
 
 const getServiceById=async(req,res)=>{try{
  const row=await withTransaction(async c=>{const r=await c.query(

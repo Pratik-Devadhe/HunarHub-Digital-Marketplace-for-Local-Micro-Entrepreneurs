@@ -74,7 +74,20 @@ const getEntrepreneurs = async (req, res) => {
     else if (sort_by === "price_low") orderBy = "starting_price ASC NULLS LAST";
     else if (sort_by === "experience") orderBy = "ep.experience_years DESC";
 
-    const rows = await withTransaction(async (c) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit) || 50));
+    const offset = (page - 1) * limit;
+
+    const data = await withTransaction(async (c) => {
+      const countRes = await c.query(
+        `SELECT COUNT(*)::int as total
+         FROM entrepreneur_profiles ep
+         JOIN users u ON u.id = ep.user_id
+         WHERE ${where.join(" AND ")}`,
+        vals
+      );
+      const total = countRes.rows[0]?.total || 0;
+
       const queryStr = `
         SELECT ep.id, ep.user_id, u.full_name, u.profile_image, ep.business_name, ep.bio, ep.experience_years,
                ep.city, ep.state, ep.pincode, ep.phone, ep.average_rating, ep.total_reviews, ep.is_available,
@@ -85,12 +98,22 @@ const getEntrepreneurs = async (req, res) => {
         FROM entrepreneur_profiles ep
         JOIN users u ON u.id = ep.user_id
         WHERE ${where.join(" AND ")}
-        ORDER BY ${orderBy}`;
+        ORDER BY ${orderBy}
+        LIMIT $${n} OFFSET $${n + 1}`;
 
-      return (await c.query(queryStr, vals)).rows;
+      const rows = (await c.query(queryStr, [...vals, limit, offset])).rows;
+      return {
+        entrepreneurs: rows,
+        pagination: {
+          total,
+          page,
+          limit,
+          total_pages: Math.ceil(total / limit)
+        }
+      };
     });
 
-    res.json({ success: true, entrepreneurs: rows });
+    res.json({ success: true, ...data });
   } catch (e) {
     sendError(res, e);
   }

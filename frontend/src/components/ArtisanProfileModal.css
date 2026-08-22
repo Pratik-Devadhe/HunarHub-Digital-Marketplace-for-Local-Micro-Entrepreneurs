@@ -4,8 +4,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(6px);
+  background: rgba(4, 7, 13, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14,12 +15,13 @@
 }
 
 .artisan-modal-container {
-  background: #ffffff;
+  background: rgba(11, 17, 30, 0.96);
+  border: 1px solid var(--primary-amber-border);
   width: 100%;
   max-width: 900px;
   max-height: 90vh;
-  border-radius: 20px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), var(--shadow-glow);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -39,21 +41,22 @@
 
 .artisan-modal-header {
   position: relative;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+  color: var(--text-heading);
   padding: 2rem;
   display: flex;
   gap: 1.5rem;
   align-items: flex-start;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .artisan-modal-close {
   position: absolute;
   top: 1.25rem;
   right: 1.25rem;
-  background: rgba(255, 255, 255, 0.15);
-  border: none;
-  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
+  color: var(--text-heading);
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -65,17 +68,17 @@
 }
 
 .artisan-modal-close:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.2);
   transform: rotate(90deg);
 }
 
 .artisan-avatar-lg {
   width: 96px;
   height: 96px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   object-fit: cover;
-  border: 3px solid #f59e0b;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  border: 3px solid var(--primary-amber);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
 }
 
 .artisan-header-info {
@@ -84,15 +87,15 @@
 
 .artisan-header-info h2 {
   font-size: 1.6rem;
-  font-weight: 700;
-  color: #ffffff;
+  font-weight: 800;
+  color: var(--text-heading);
   margin: 0 0 0.25rem 0;
 }
 
 .artisan-business-name {
-  color: #f59e0b;
+  color: var(--primary-amber);
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 0.75rem;
 }
 
@@ -108,27 +111,27 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.25rem 0.65rem;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .v-badge.verified {
   background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
 .v-badge.pending {
   background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #FBBF24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
 }
 
 .artisan-modal-nav {
   display: flex;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom: 1px solid var(--border-color);
   padding: 0 1.5rem;
   overflow-x: auto;
 }
@@ -138,9 +141,9 @@
   background: transparent;
   border: none;
   border-bottom: 3px solid transparent;
-  font-weight: 600;
-  font-size: 0.92rem;
-  color: #64748b;
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--text-muted);
   cursor: pointer;
   white-space: nowrap;
   display: flex;
@@ -150,13 +153,13 @@
 }
 
 .artisan-tab-btn:hover {
-  color: #1e293b;
+  color: var(--text-heading);
 }
 
 .artisan-tab-btn.active {
-  color: #d97706;
-  border-bottom-color: #d97706;
-  background: #ffffff;
+  color: var(--primary-amber);
+  border-bottom-color: var(--primary-amber);
+  background: rgba(245, 158, 11, 0.08);
 }
 
 .artisan-modal-body {
@@ -173,42 +176,42 @@
 }
 
 .art-stat-card {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   padding: 1rem;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   text-align: center;
 }
 
 .art-stat-val {
   font-size: 1.35rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--primary-amber);
 }
 
 .art-stat-lbl {
-  font-size: 0.8rem;
-  color: #64748b;
+  font-size: 0.775rem;
+  color: var(--text-dim);
   margin-top: 0.2rem;
 }
 
 .artisan-bio-box {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   padding: 1.25rem;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   margin-bottom: 1.5rem;
 }
 
 .artisan-bio-box h4 {
   margin: 0 0 0.5rem 0;
   font-size: 1rem;
-  color: #0f172a;
+  color: var(--text-heading);
 }
 
 .artisan-bio-box p {
-  color: #475569;
-  font-size: 0.95rem;
+  color: var(--text-muted);
+  font-size: 0.925rem;
   line-height: 1.6;
   margin: 0;
 }
@@ -220,17 +223,17 @@
 }
 
 .portfolio-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .portfolio-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+  border-color: var(--primary-amber-border);
 }
 
 .portfolio-img {
@@ -246,19 +249,19 @@
 .portfolio-content h5 {
   margin: 0 0 0.35rem 0;
   font-size: 0.98rem;
-  color: #0f172a;
+  color: var(--text-heading);
 }
 
 .portfolio-content p {
-  font-size: 0.85rem;
-  color: #64748b;
+  font-size: 0.825rem;
+  color: var(--text-muted);
   margin: 0 0 0.5rem 0;
   line-height: 1.4;
 }
 
 .portfolio-price {
-  font-weight: 700;
-  color: #d97706;
+  font-weight: 800;
+  color: var(--primary-amber);
   font-size: 0.95rem;
 }
 
@@ -272,22 +275,22 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   padding: 1.25rem;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
 }
 
 .service-item-info h5 {
   margin: 0 0 0.25rem 0;
   font-size: 1.05rem;
-  color: #0f172a;
+  color: var(--text-heading);
 }
 
 .service-item-info p {
   margin: 0;
   font-size: 0.88rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .service-item-action {
@@ -297,13 +300,13 @@
 .service-item-price {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--primary-amber);
   margin-bottom: 0.5rem;
 }
 
 .artisan-modal-footer {
-  background: #f8fafc;
-  border-top: 1px solid #e2e8f0;
+  background: rgba(15, 23, 42, 0.95);
+  border-top: 1px solid var(--border-color);
   padding: 1.25rem 1.75rem;
   display: flex;
   justify-content: space-between;
@@ -316,39 +319,10 @@
   gap: 0.75rem;
 }
 
-.btn-sec-outline {
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  color: #334155;
-  padding: 0.65rem 1.25rem;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.artisan-review-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
 }
 
-.btn-sec-outline:hover {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-}
-
-.btn-primary-amber {
-  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-  color: #ffffff;
-  border: none;
-  padding: 0.65rem 1.4rem;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
-}
-
-.btn-primary-amber:hover {
-  background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
-  transform: translateY(-1px);
-}

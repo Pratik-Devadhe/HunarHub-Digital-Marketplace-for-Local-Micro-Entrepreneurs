@@ -12,6 +12,7 @@ import CartDrawer from "./components/CartDrawer";
 import AuthModal from "./components/AuthModal";
 import ReviewModal from "./components/ReviewModal";
 import Toast from "./components/Toast";
+import Footer from "./components/Footer";
 import { api } from "./services/api";
 import { ShieldAlert, LogIn } from "lucide-react";
 import "./App.css";
@@ -339,15 +340,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="app-footer">
-        <div className="app-footer-inner">
-          <div className="app-footer-brand">
-            <span className="app-footer-brand-name">HunarHub Service Experts Network</span>
-            <span>— Empowering Local Artisans & Micro-Entrepreneurs</span>
-          </div>
-          <p>© 2026 HunarHub Platform. Connecting customers with trusted local professionals.</p>
-        </div>
-      </footer>
+      <Footer onOpenAuth={() => setIsAuthOpen(true)} />
 
       {/* Modals & Overlay Drawers */}
       <AuthModal
