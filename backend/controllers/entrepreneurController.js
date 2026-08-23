@@ -202,30 +202,69 @@ const createProfile = async (req, res) => {
     const { business_name, bio, experience_years, phone, address, city, state, pincode, latitude, longitude } = req.body;
 
     const data = await withTransaction(async (c) => {
-      const existing = await c.query("SELECT id FROM entrepreneur_profiles WHERE user_id = $1", [req.user.id]);
-      if (existing.rowCount) throw httpError("Entrepreneur profile already exists", 409);
+      // Ensure user role is updated to ENTREPRENEUR in users table
+      await c.query("UPDATE users SET role = 'ENTREPRENEUR', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [req.user.id]);
 
-      const r = await c.query(
-        `INSERT INTO entrepreneur_profiles
-         (user_id, business_name, bio, experience_years, phone, address, city, state, pincode, location)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
-           CASE WHEN $10::double precision IS NOT NULL AND $11::double precision IS NOT NULL
-           THEN ST_SetSRID(ST_MakePoint($11, $10), 4326)::geography ELSE NULL END)
-         RETURNING *`,
-        [
-          req.user.id,
-          business_name || null,
-          bio || null,
-          experience_years || 0,
-          phone || null,
-          address || null,
-          city || null,
-          state || null,
-          pincode || null,
-          latitude ?? null,
-          longitude ?? null
-        ]
-      );
+      const existing = await c.query("SELECT id FROM entrepreneur_profiles WHERE user_id = $1", [req.user.id]);
+
+      let r;
+      if (existing.rowCount) {
+        // Profile stub exists, update with onboarding details and approve
+        r = await c.query(
+          `UPDATE entrepreneur_profiles SET
+             business_name = COALESCE($1, business_name),
+             bio = COALESCE($2, bio),
+             experience_years = COALESCE($3, experience_years),
+             phone = COALESCE($4, phone),
+             address = COALESCE($5, address),
+             city = COALESCE($6, city),
+             state = COALESCE($7, state),
+             pincode = COALESCE($8, pincode),
+             verification_status = 'APPROVED',
+             is_available = true,
+             location = CASE WHEN $9::double precision IS NOT NULL AND $10::double precision IS NOT NULL
+               THEN ST_SetSRID(ST_MakePoint($10, $9), 4326)::geography ELSE location END,
+             updated_at = CURRENT_TIMESTAMP
+           WHERE user_id = $11 RETURNING *`,
+          [
+            business_name || null,
+            bio || null,
+            experience_years ? parseInt(experience_years) : 0,
+            phone || null,
+            address || null,
+            city || null,
+            state || null,
+            pincode || null,
+            latitude ?? null,
+            longitude ?? null,
+            req.user.id
+          ]
+        );
+      } else {
+        // Insert new approved entrepreneur profile
+        r = await c.query(
+          `INSERT INTO entrepreneur_profiles
+           (user_id, business_name, bio, experience_years, phone, address, city, state, pincode, verification_status, is_available, location)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'APPROVED', true,
+             CASE WHEN $10::double precision IS NOT NULL AND $11::double precision IS NOT NULL
+             THEN ST_SetSRID(ST_MakePoint($11, $10), 4326)::geography ELSE NULL END)
+           RETURNING *`,
+          [
+            req.user.id,
+            business_name || null,
+            bio || null,
+            experience_years ? parseInt(experience_years) : 0,
+            phone || null,
+            address || null,
+            city || null,
+            state || null,
+            pincode || null,
+            latitude ?? null,
+            longitude ?? null
+          ]
+        );
+      }
+
       return r.rows[0];
     });
 

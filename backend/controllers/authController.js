@@ -33,8 +33,8 @@ const register = async (req, res) => {
 
             if (role === "ENTREPRENEUR") {
                 await client.query(
-                    `INSERT INTO entrepreneur_profiles(user_id)
-                     VALUES($1)`,
+                    `INSERT INTO entrepreneur_profiles(user_id, verification_status)
+                     VALUES($1, 'APPROVED')`,
                     [user.rows[0].id]
                 );
             }

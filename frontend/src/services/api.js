@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");;
+const API_BASE = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
 
 // Sample Fallback Data if Backend returns empty or offline
 const MOCK_CATEGORIES = [

@@ -11,26 +11,30 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req,res)=>res.json({success:true,message:"Welcome to HunarHub API"}));
 
-app.use("/health", require("./routes/healthRoutes"));
-app.use("/auth", require("./routes/authRoutes"));
-app.use("/users", require("./routes/userRoutes"));
-app.use("/entrepreneurs", require("./routes/entrepreneurRoutes"));
-app.use("/categories", require("./routes/categoryRoutes"));
-app.use("/skills", require("./routes/skillRoutes"));
-app.use("/services", require("./routes/serviceRoutes"));
-app.use("/products", require("./routes/productRoutes"));
-app.use("/availability", require("./routes/availabilityRoutes"));
-app.use("/service-requests", require("./routes/serviceRequestRoutes"));
-app.use("/orders", require("./routes/orderRoutes"));
-app.use("/payments", require("./routes/paymentRoutes"));
-app.use("/reviews", require("./routes/reviewRoutes"));
-app.use("/favorites", require("./routes/favoriteRoutes"));
-app.use("/notifications", require("./routes/notificationRoutes"));
-app.use("/complaints", require("./routes/complaintRoutes"));
-app.use("/portfolio", require("./routes/portfolioRoutes"));
-app.use("/quotes", require("./routes/quoteRoutes"));
-app.use("/messages", require("./routes/messageRoutes"));
-app.use("/admin", require("./routes/adminRoutes"));
+const apiRouter = express.Router();
+apiRouter.use("/health", require("./routes/healthRoutes"));
+apiRouter.use("/auth", require("./routes/authRoutes"));
+apiRouter.use("/users", require("./routes/userRoutes"));
+apiRouter.use("/entrepreneurs", require("./routes/entrepreneurRoutes"));
+apiRouter.use("/categories", require("./routes/categoryRoutes"));
+apiRouter.use("/skills", require("./routes/skillRoutes"));
+apiRouter.use("/services", require("./routes/serviceRoutes"));
+apiRouter.use("/products", require("./routes/productRoutes"));
+apiRouter.use("/availability", require("./routes/availabilityRoutes"));
+apiRouter.use("/service-requests", require("./routes/serviceRequestRoutes"));
+apiRouter.use("/orders", require("./routes/orderRoutes"));
+apiRouter.use("/payments", require("./routes/paymentRoutes"));
+apiRouter.use("/reviews", require("./routes/reviewRoutes"));
+apiRouter.use("/favorites", require("./routes/favoriteRoutes"));
+apiRouter.use("/notifications", require("./routes/notificationRoutes"));
+apiRouter.use("/complaints", require("./routes/complaintRoutes"));
+apiRouter.use("/portfolio", require("./routes/portfolioRoutes"));
+apiRouter.use("/quotes", require("./routes/quoteRoutes"));
+apiRouter.use("/messages", require("./routes/messageRoutes"));
+apiRouter.use("/admin", require("./routes/adminRoutes"));
+
+app.use("/api", apiRouter);
+app.use(apiRouter);
 
 app.use((req,res)=>res.status(404).json({success:false,message:"Endpoint not found"}));
 

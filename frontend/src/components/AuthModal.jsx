@@ -61,28 +61,6 @@ export default function AuthModal({ isOpen, initialRole, isSignUpView, onClose, 
           </button>
         </div>
 
-        {/* Quick Persona Logins for Easy Testing */}
-        <div className="quick-persona-box">
-          <div className="quick-persona-header">
-            <Zap size={16} className="auth-modal-icon" />
-            <span className="quick-persona-label">Quick Test Personas (1-Click Login)</span>
-          </div>
-          <div className="quick-persona-grid">
-            {personas.map((p) => (
-              <button
-                key={p.email}
-                type="button"
-                disabled={loading}
-                onClick={() => handleQuickLogin(p)}
-                className="persona-tile-btn"
-              >
-                <span>{p.icon}</span>
-                <span className="persona-name">{p.name.split(" ")[0]}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         <form onSubmit={handleSubmit} className="auth-form">
           {!isLoginView && (
             <>
