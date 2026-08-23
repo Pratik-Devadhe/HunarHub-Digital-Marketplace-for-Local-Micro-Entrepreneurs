@@ -13,9 +13,9 @@
 
 .navbar-inner {
   width: 100%;
-  max-width: var(--max-width-container);
-  margin: 0 auto;
-  padding: 0 1.5rem;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 2rem;
   height: var(--header-height);
   display: flex;
   align-items: center;
@@ -120,7 +120,7 @@
 
 .navbar-search {
   flex: 1;
-  max-width: 32rem;
+  max-width: 36rem;
   position: relative;
 }
 

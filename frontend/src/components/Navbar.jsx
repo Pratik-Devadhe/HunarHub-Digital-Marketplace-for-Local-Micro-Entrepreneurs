@@ -143,7 +143,7 @@ export default function Navbar({
           {(!user || user.role !== "ENTREPRENEUR") && (
             <button
               onClick={() => {
-                if (!user) onOpenAuth();
+                if (!user) onOpenAuth({ isSignUp: true, role: "ENTREPRENEUR" });
                 else handleNavClick("/entrepreneur");
               }}
               className="btn-list-business desktop-only-btn"
@@ -258,7 +258,7 @@ export default function Navbar({
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  if (!user) onOpenAuth();
+                  if (!user) onOpenAuth({ isSignUp: true, role: "ENTREPRENEUR" });
                   else handleNavClick("/entrepreneur");
                 }}
                 className="btn-list-business w-full justify-center py-3"

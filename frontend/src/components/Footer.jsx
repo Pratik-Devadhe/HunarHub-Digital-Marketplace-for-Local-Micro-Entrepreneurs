@@ -42,7 +42,7 @@ export default function Footer({ onOpenAuth }) {
             <h4 className="footer-col-title">Micro-Entrepreneurs</h4>
             <ul className="footer-links-list">
               <li className="footer-link-item">
-                <button onClick={onOpenAuth} className="btn-ghost">
+                <button onClick={() => onOpenAuth?.({ isSignUp: true, role: "ENTREPRENEUR" })} className="btn-ghost">
                   List Your Business FREE
                 </button>
               </li>

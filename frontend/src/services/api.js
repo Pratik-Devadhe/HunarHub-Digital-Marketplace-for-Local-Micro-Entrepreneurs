@@ -303,6 +303,9 @@ async function request(endpoint, options = {}) {
   }
 }
 
+const IS_DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
+
+let LOCAL_SERVICE_REQUESTS = [];
 let LOCAL_ORDERS = [
   { id: 801, status: "CONFIRMED", payment_status: "PAID", created_at: new Date().toISOString(), total_amount: "699.00", shipping_address: "Flat 402, Sunshine Apartments, Bandra West, Mumbai", items: [{ product_name: "Handcrafted Genuine Leather Belt", quantity: 1, subtotal: "699.00" }] }
 ];
@@ -312,30 +315,43 @@ export const api = {
   login: async (email, password) => {
     try {
       return await request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
-    } catch (_) {
-      // Mock login fallback for smooth testing
-      const user = email.includes("admin")
-        ? { id: 1, full_name: "System Admin", email, role: "ADMIN" }
-        : email.includes("ramesh")
-        ? { id: 3, full_name: "Ramesh Kumar", email, role: "ENTREPRENEUR" }
-        : email.includes("sunita")
-        ? { id: 5, full_name: "Sunita Sharma", email, role: "ENTREPRENEUR" }
-        : { id: 2, full_name: "Ananya Roy", email, role: "CUSTOMER" };
-      return { success: true, token: "mock_jwt_token_123", user };
+    } catch (err) {
+      if (IS_DEMO_MODE) {
+        const user = email.includes("admin")
+          ? { id: 1, full_name: "System Admin", email, role: "ADMIN" }
+          : email.includes("ramesh")
+          ? { id: 3, full_name: "Ramesh Kumar", email, role: "ENTREPRENEUR" }
+          : email.includes("sunita")
+          ? { id: 5, full_name: "Sunita Sharma", email, role: "ENTREPRENEUR" }
+          : { id: 2, full_name: "Ananya Roy", email, role: "CUSTOMER" };
+        return { success: true, token: "mock_jwt_token_123", user };
+      }
+      throw err;
     }
   },
 
   register: (userData) => request("/auth/register", { method: "POST", body: JSON.stringify(userData) }),
-  getMe: () => request("/auth/me").catch(() => ({ user: { id: 2, full_name: "Ananya Roy", email: "ananya@gmail.com", role: "CUSTOMER" } })),
+  getMe: async () => {
+    try {
+      return await request("/auth/me");
+    } catch (err) {
+      if (IS_DEMO_MODE) {
+        return { user: { id: 2, full_name: "Ananya Roy", email: "ananya@gmail.com", role: "CUSTOMER" } };
+      }
+      throw err;
+    }
+  },
 
   // Categories & Skills
   getCategories: async () => {
     try {
       const res = await request("/categories");
-      if (res.categories && res.categories.length > 0) return res;
-      return { categories: MOCK_CATEGORIES };
-    } catch (_) {
-      return { categories: MOCK_CATEGORIES };
+      if (res && res.categories && res.categories.length > 0) return res;
+      if (IS_DEMO_MODE) return { categories: MOCK_CATEGORIES };
+      return res || { categories: [] };
+    } catch (err) {
+      if (IS_DEMO_MODE) return { categories: MOCK_CATEGORIES };
+      throw err;
     }
   },
 
@@ -343,10 +359,12 @@ export const api = {
   getEntrepreneurs: async (params = {}) => {
     try {
       const res = await request("/entrepreneurs");
-      if (res.entrepreneurs && res.entrepreneurs.length > 0) return res;
-      return { entrepreneurs: MOCK_ENTREPRENEURS };
-    } catch (_) {
-      return { entrepreneurs: MOCK_ENTREPRENEURS };
+      if (res && res.entrepreneurs && res.entrepreneurs.length > 0) return res;
+      if (IS_DEMO_MODE) return { entrepreneurs: MOCK_ENTREPRENEURS };
+      return res || { entrepreneurs: [] };
+    } catch (err) {
+      if (IS_DEMO_MODE) return { entrepreneurs: MOCK_ENTREPRENEURS };
+      throw err;
     }
   },
 
@@ -354,10 +372,12 @@ export const api = {
   getServices: async (params = {}) => {
     try {
       const res = await request("/services");
-      if (res.services && res.services.length > 0) return res;
-      return { services: MOCK_SERVICES };
-    } catch (_) {
-      return { services: MOCK_SERVICES };
+      if (res && res.services && res.services.length > 0) return res;
+      if (IS_DEMO_MODE) return { services: MOCK_SERVICES };
+      return res || { services: [] };
+    } catch (err) {
+      if (IS_DEMO_MODE) return { services: MOCK_SERVICES };
+      throw err;
     }
   },
 
@@ -365,19 +385,35 @@ export const api = {
   getProducts: async (params = {}) => {
     try {
       const res = await request("/products");
-      if (res.products && res.products.length > 0) return res;
-      return { products: MOCK_PRODUCTS };
-    } catch (_) {
-      return { products: MOCK_PRODUCTS };
+      if (res && res.products && res.products.length > 0) return res;
+      if (IS_DEMO_MODE) return { products: MOCK_PRODUCTS };
+      return res || { products: [] };
+    } catch (err) {
+      if (IS_DEMO_MODE) return { products: MOCK_PRODUCTS };
+      throw err;
     }
   },
 
-  getMyServices: () => request("/services/my").catch(() => ({ services: MOCK_SERVICES.slice(0, 2) })),
+  getMyServices: async () => {
+    try {
+      return await request("/services/my");
+    } catch (err) {
+      if (IS_DEMO_MODE) return { services: MOCK_SERVICES.slice(0, 2) };
+      throw err;
+    }
+  },
   createService: (serviceData) => request("/services", { method: "POST", body: JSON.stringify(serviceData) }),
   updateService: (id, serviceData) => request(`/services/${id}`, { method: "PUT", body: JSON.stringify(serviceData) }),
   deleteService: (id) => request(`/services/${id}`, { method: "DELETE" }),
 
-  getMyProducts: () => request("/products/my").catch(() => ({ products: MOCK_PRODUCTS.slice(0, 2) })),
+  getMyProducts: async () => {
+    try {
+      return await request("/products/my");
+    } catch (err) {
+      if (IS_DEMO_MODE) return { products: MOCK_PRODUCTS.slice(0, 2) };
+      throw err;
+    }
+  },
   createProduct: (productData) => request("/products", { method: "POST", body: JSON.stringify(productData) }),
   updateProduct: (id, productData) => request(`/products/${id}`, { method: "PUT", body: JSON.stringify(productData) }),
   deleteProduct: (id) => request(`/products/${id}`, { method: "DELETE" }),
@@ -387,80 +423,102 @@ export const api = {
     try {
       return await request("/service-requests", { method: "POST", body: JSON.stringify(data) });
     } catch (err) {
-      console.warn("Backend call failed, creating local fallback service request:", err);
-      const newReq = {
-        id: Math.floor(100 + Math.random() * 900),
-        service_id: data.service_id,
-        entrepreneur_id: data.entrepreneur_id,
-        service_title: data.description || "Craft Service Booking",
-        business_name: "Verified Local Artisan",
-        requested_date: data.requested_date || new Date().toISOString().split("T")[0],
-        requested_time: data.requested_time || "10:00",
-        address: data.address || "Customer Address",
-        estimated_price: data.estimated_price || "500.00",
-        status: "PENDING",
-        customer_note: data.customer_note || ""
-      };
-      LOCAL_SERVICE_REQUESTS.unshift(newReq);
-      return { success: true, request: newReq };
+      if (IS_DEMO_MODE) {
+        console.warn("Backend call failed in DEMO mode, creating local fallback service request:", err);
+        const newReq = {
+          id: Math.floor(100 + Math.random() * 900),
+          service_id: data.service_id,
+          entrepreneur_id: data.entrepreneur_id,
+          service_title: data.description || "Craft Service Booking",
+          business_name: "Verified Local Artisan",
+          requested_date: data.requested_date || new Date().toISOString().split("T")[0],
+          requested_time: data.requested_time || "10:00",
+          address: data.address || "Customer Address",
+          estimated_price: data.estimated_price || "500.00",
+          status: "PENDING",
+          customer_note: data.customer_note || ""
+        };
+        LOCAL_SERVICE_REQUESTS.unshift(newReq);
+        return { success: true, request: newReq };
+      }
+      throw err;
     }
   },
   getMyServiceRequests: async () => {
     try {
       const res = await request("/service-requests/my");
-      if (res && res.requests && res.requests.length > 0) return res;
-      return { requests: LOCAL_SERVICE_REQUESTS };
-    } catch (_) {
-      return { requests: LOCAL_SERVICE_REQUESTS };
+      if (res && res.requests) return res;
+      if (IS_DEMO_MODE) return { requests: LOCAL_SERVICE_REQUESTS };
+      return { requests: [] };
+    } catch (err) {
+      if (IS_DEMO_MODE) return { requests: LOCAL_SERVICE_REQUESTS };
+      throw err;
     }
   },
   getReceivedServiceRequests: async () => {
     try {
       const res = await request("/service-requests/received");
-      if (res && res.requests && res.requests.length > 0) return res;
-      return { requests: LOCAL_SERVICE_REQUESTS };
-    } catch (_) {
-      return { requests: LOCAL_SERVICE_REQUESTS };
+      if (res && res.requests) return res;
+      if (IS_DEMO_MODE) return { requests: LOCAL_SERVICE_REQUESTS };
+      return { requests: [] };
+    } catch (err) {
+      if (IS_DEMO_MODE) return { requests: LOCAL_SERVICE_REQUESTS };
+      throw err;
     }
   },
   cancelServiceRequest: async (id) => {
     try {
       return await request(`/service-requests/${id}/cancel`, { method: "PUT" });
-    } catch (_) {
-      LOCAL_SERVICE_REQUESTS = LOCAL_SERVICE_REQUESTS.map((r) => r.id === id ? { ...r, status: "CANCELLED" } : r);
-      return { success: true };
+    } catch (err) {
+      if (IS_DEMO_MODE) {
+        LOCAL_SERVICE_REQUESTS = LOCAL_SERVICE_REQUESTS.map((r) => r.id === id ? { ...r, status: "CANCELLED" } : r);
+        return { success: true };
+      }
+      throw err;
     }
   },
   acceptServiceRequest: async (id) => {
     try {
       return await request(`/service-requests/${id}/accept`, { method: "PUT" });
-    } catch (_) {
-      LOCAL_SERVICE_REQUESTS = LOCAL_SERVICE_REQUESTS.map((r) => r.id === id ? { ...r, status: "ACCEPTED" } : r);
-      return { success: true };
+    } catch (err) {
+      if (IS_DEMO_MODE) {
+        LOCAL_SERVICE_REQUESTS = LOCAL_SERVICE_REQUESTS.map((r) => r.id === id ? { ...r, status: "ACCEPTED" } : r);
+        return { success: true };
+      }
+      throw err;
     }
   },
   rejectServiceRequest: async (id) => {
     try {
       return await request(`/service-requests/${id}/reject`, { method: "PUT" });
-    } catch (_) {
-      LOCAL_SERVICE_REQUESTS = LOCAL_SERVICE_REQUESTS.map((r) => r.id === id ? { ...r, status: "REJECTED" } : r);
-      return { success: true };
+    } catch (err) {
+      if (IS_DEMO_MODE) {
+        LOCAL_SERVICE_REQUESTS = LOCAL_SERVICE_REQUESTS.map((r) => r.id === id ? { ...r, status: "REJECTED" } : r);
+        return { success: true };
+      }
+      throw err;
     }
   },
   startServiceRequest: async (id) => {
     try {
       return await request(`/service-requests/${id}/start`, { method: "PUT" });
-    } catch (_) {
-      LOCAL_SERVICE_REQUESTS = LOCAL_SERVICE_REQUESTS.map((r) => r.id === id ? { ...r, status: "IN_PROGRESS" } : r);
-      return { success: true };
+    } catch (err) {
+      if (IS_DEMO_MODE) {
+        LOCAL_SERVICE_REQUESTS = LOCAL_SERVICE_REQUESTS.map((r) => r.id === id ? { ...r, status: "IN_PROGRESS" } : r);
+        return { success: true };
+      }
+      throw err;
     }
   },
   completeServiceRequest: async (id) => {
     try {
       return await request(`/service-requests/${id}/complete`, { method: "PUT" });
-    } catch (_) {
-      LOCAL_SERVICE_REQUESTS = LOCAL_SERVICE_REQUESTS.map((r) => r.id === id ? { ...r, status: "COMPLETED" } : r);
-      return { success: true };
+    } catch (err) {
+      if (IS_DEMO_MODE) {
+        LOCAL_SERVICE_REQUESTS = LOCAL_SERVICE_REQUESTS.map((r) => r.id === id ? { ...r, status: "COMPLETED" } : r);
+        return { success: true };
+      }
+      throw err;
     }
   },
 
@@ -469,95 +527,131 @@ export const api = {
     try {
       return await request("/orders", { method: "POST", body: JSON.stringify(orderData) });
     } catch (err) {
-      console.warn("Backend call failed, creating local fallback order:", err);
-      const newOrder = {
-        id: Math.floor(800 + Math.random() * 900),
-        status: "CONFIRMED",
-        payment_status: "PENDING",
-        created_at: new Date().toISOString(),
-        total_amount: orderData.total_amount || "699.00",
-        shipping_address: orderData.shipping_address || "Customer Address",
-        items: (orderData.items || []).map((it) => ({
-          product_name: "Handcrafted Product Item",
-          quantity: it.quantity || 1,
-          subtotal: "699.00"
-        }))
-      };
-      LOCAL_ORDERS.unshift(newOrder);
-      return { success: true, order: newOrder };
+      if (IS_DEMO_MODE) {
+        console.warn("Backend call failed in DEMO mode, creating local fallback order:", err);
+        const newOrder = {
+          id: Math.floor(800 + Math.random() * 900),
+          status: "CONFIRMED",
+          payment_status: "PENDING",
+          created_at: new Date().toISOString(),
+          total_amount: orderData.total_amount || "699.00",
+          shipping_address: orderData.shipping_address || "Customer Address",
+          items: (orderData.items || []).map((it) => ({
+            product_name: "Handcrafted Product Item",
+            quantity: it.quantity || 1,
+            subtotal: "699.00"
+          }))
+        };
+        LOCAL_ORDERS.unshift(newOrder);
+        return { success: true, order: newOrder };
+      }
+      throw err;
     }
   },
   getMyOrders: async () => {
     try {
       const res = await request("/orders/my");
-      if (res && res.orders && res.orders.length > 0) return res;
-      return { orders: LOCAL_ORDERS };
-    } catch (_) {
-      return { orders: LOCAL_ORDERS };
+      if (res && res.orders) return res;
+      if (IS_DEMO_MODE) return { orders: LOCAL_ORDERS };
+      return { orders: [] };
+    } catch (err) {
+      if (IS_DEMO_MODE) return { orders: LOCAL_ORDERS };
+      throw err;
     }
   },
   getReceivedOrders: async () => {
     try {
       const res = await request("/orders/received");
-      if (res && res.orders && res.orders.length > 0) return res;
-      return { orders: LOCAL_ORDERS };
-    } catch (_) {
-      return { orders: LOCAL_ORDERS };
+      if (res && res.orders) return res;
+      if (IS_DEMO_MODE) return { orders: LOCAL_ORDERS };
+      return { orders: [] };
+    } catch (err) {
+      if (IS_DEMO_MODE) return { orders: LOCAL_ORDERS };
+      throw err;
     }
   },
 
   // Payments
-  createPaymentOrder: (data) => request("/payments/create-order", { method: "POST", body: JSON.stringify(data) }).catch(() => ({ razorpay_order: { id: "order_mock_123" } })),
-  verifyPayment: (data) => request("/payments/verify", { method: "POST", body: JSON.stringify(data) }).catch(() => ({ success: true })),
+  createPaymentOrder: (data) => request("/payments/create-order", { method: "POST", body: JSON.stringify(data) }),
+  verifyPayment: (data) => request("/payments/verify", { method: "POST", body: JSON.stringify(data) }),
 
   // Entrepreneur Profile & Portfolio
-  getEntrepreneurById: (id) => request(`/entrepreneurs/${id}`).catch(() => ({ entrepreneur: MOCK_ENTREPRENEURS.find(e => e.id === Number(id)) || MOCK_ENTREPRENEURS[0] })),
+  getEntrepreneurById: async (id) => {
+    try {
+      return await request(`/entrepreneurs/${id}`);
+    } catch (err) {
+      if (IS_DEMO_MODE) return { entrepreneur: MOCK_ENTREPRENEURS.find(e => e.id === Number(id)) || MOCK_ENTREPRENEURS[0] };
+      throw err;
+    }
+  },
   updateEntrepreneurProfile: (data) => request("/entrepreneurs/me", { method: "PUT", body: JSON.stringify(data) }),
+  createEntrepreneurProfile: async (data) => {
+    try {
+      return await request("/entrepreneurs", { method: "POST", body: JSON.stringify(data) });
+    } catch (err) {
+      if (IS_DEMO_MODE) {
+        return { success: true, entrepreneur: { id: 99, business_name: data.business_name, ...data } };
+      }
+      throw err;
+    }
+  },
   
-  getPortfolio: (epId) => request(`/portfolio/entrepreneur/${epId}`).catch(() => ({ portfolio: [
-    { id: 1, title: "Resoling Formal Leather Boots", description: "Goodyear welt hand stitching on Oxford boots", image_url: "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400", price: "750.00" },
-    { id: 2, title: "Custom Leather Duffel Bag", description: "Hand-stitched vintage tan travel bag", image_url: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400", price: "2499.00" }
-  ] })),
+  getPortfolio: async (epId) => {
+    try {
+      return await request(`/portfolio/entrepreneur/${epId}`);
+    } catch (err) {
+      if (IS_DEMO_MODE) return { portfolio: [
+        { id: 1, title: "Resoling Formal Leather Boots", description: "Goodyear welt hand stitching on Oxford boots", image_url: "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400", price: "750.00" },
+        { id: 2, title: "Custom Leather Duffel Bag", description: "Hand-stitched vintage tan travel bag", image_url: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400", price: "2499.00" }
+      ] };
+      throw err;
+    }
+  },
   createPortfolioItem: (data) => request("/portfolio", { method: "POST", body: JSON.stringify(data) }),
   updatePortfolioItem: (id, data) => request(`/portfolio/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deletePortfolioItem: (id) => request(`/portfolio/${id}`, { method: "DELETE" }),
 
   // Quotes
   createQuote: (data) => request("/quotes", { method: "POST", body: JSON.stringify(data) }),
-  getQuotesForRequest: (reqId) => request(`/quotes/request/${reqId}`).catch(() => ({ quotes: [
-    { id: 1, proposed_price: "650.00", estimated_completion: "2 Days", message: "I can deliver high quality custom work within 48 hrs.", business_name: "Ramesh Leather Craft", average_rating: 4.9, verification_status: "APPROVED" }
-  ] })),
+  getQuotesForRequest: async (reqId) => {
+    try {
+      return await request(`/quotes/request/${reqId}`);
+    } catch (err) {
+      if (IS_DEMO_MODE) return { quotes: [
+        { id: 1, proposed_price: "650.00", estimated_completion: "2 Days", message: "I can deliver high quality custom work within 48 hrs.", business_name: "Ramesh Leather Craft", average_rating: 4.9, verification_status: "APPROVED" }
+      ] };
+      throw err;
+    }
+  },
   acceptQuote: (quoteId) => request(`/quotes/${quoteId}/accept`, { method: "PUT" }),
   rejectQuote: (quoteId) => request(`/quotes/${quoteId}/reject`, { method: "PUT" }),
 
   // Messages / In-App Chat
-  getConversations: () => request("/messages/conversations").catch(() => ({ conversations: [] })),
+  getConversations: () => request("/messages/conversations"),
   getMessages: (params = {}) => {
     const query = new URLSearchParams(params).toString();
-    return request(`/messages${query ? `?${query}` : ''}`).catch(() => ({ messages: [] }));
+    return request(`/messages${query ? `?${query}` : ''}`);
   },
   sendMessage: (data) => request("/messages", { method: "POST", body: JSON.stringify(data) }),
 
   // Favorites
-  getFavorites: () => request("/favorites").catch(() => ({ favorites: [] })),
+  getFavorites: () => request("/favorites"),
   addFavorite: (data) => request("/favorites", { method: "POST", body: JSON.stringify(data) }),
   removeFavorite: (id) => request(`/favorites/${id}`, { method: "DELETE" }),
 
   // Availability
-  getAvailability: (epId) => request(`/availability/entrepreneur/${epId}`).catch(() => ({ availability: [] })),
+  getAvailability: (epId) => request(`/availability/entrepreneur/${epId}`),
   updateAvailabilitySlot: (id, data) => request(`/availability/${id}`, { method: "PUT", body: JSON.stringify(data) }),
 
   // Reviews
-  createReview: (reviewData) => request("/reviews", { method: "POST", body: JSON.stringify(reviewData) }).catch(() => ({ success: true })),
+  createReview: (reviewData) => request("/reviews", { method: "POST", body: JSON.stringify(reviewData) }),
 
   // Admin
-  getAdminDashboard: () => request("/admin/dashboard").catch(() => ({ dashboard: { users: { count: 8 }, approved_entrepreneurs: { count: 3 }, orders: { count: 5 }, requests: { count: 4 } } })),
-  getAdminEntrepreneurs: () => request("/admin/entrepreneurs").catch(() => ({ entrepreneurs: MOCK_ENTREPRENEURS })),
-  approveEntrepreneur: (id) => request(`/admin/entrepreneurs/${id}/approve`, { method: "PUT" }).catch(() => ({ success: true })),
-  rejectEntrepreneur: (id) => request(`/admin/entrepreneurs/${id}/reject`, { method: "PUT" }).catch(() => ({ success: true })),
-  updateVerificationBadges: (id, data) => request(`/admin/entrepreneurs/${id}/verification`, { method: "PUT", body: JSON.stringify(data) }).catch(() => ({ success: true })),
-  getAdminComplaints: () => request("/admin/complaints").catch(() => ({ complaints: [
-    { id: 901, subject: "Slight delay in delivery", customer_id: 2, entrepreneur_id: 1, business_name: "Ramesh Cobbler Works", description: "Work done was excellent but delivered 1 day later than expected.", status: "OPEN" }
-  ] })),
-  resolveComplaint: (id, status, admin_response) => request(`/admin/complaints/${id}/resolve`, { method: "PUT", body: JSON.stringify({ status, admin_response }) }).catch(() => ({ success: true }))
+  getAdminDashboard: () => request("/admin/dashboard"),
+  getAdminEntrepreneurs: () => request("/admin/entrepreneurs"),
+  approveEntrepreneur: (id) => request(`/admin/entrepreneurs/${id}/approve`, { method: "PUT" }),
+  rejectEntrepreneur: (id) => request(`/admin/entrepreneurs/${id}/reject`, { method: "PUT" }),
+  updateVerificationBadges: (id, data) => request(`/admin/entrepreneurs/${id}/verification`, { method: "PUT", body: JSON.stringify(data) }),
+  getAdminComplaints: () => request("/admin/complaints"),
+  resolveComplaint: (id, status, admin_response) => request(`/admin/complaints/${id}/resolve`, { method: "PUT", body: JSON.stringify({ status, admin_response }) })
 };

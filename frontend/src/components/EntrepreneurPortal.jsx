@@ -27,7 +27,7 @@ import { api } from "../services/api";
 import ChatModal from "./ChatModal";
 import "./EntrepreneurPortal.css";
 
-export default function EntrepreneurPortal({ user, showToast }) {
+export default function EntrepreneurPortal({ user, showToast, onRefreshUser }) {
   const [activeTab, setActiveTab] = useState("leads"); // "leads" | "requests" | "orders" | "services" | "products" | "portfolio" | "availability"
   const [dashboard, setDashboard] = useState(null);
   const [requests, setRequests] = useState([]);
@@ -37,6 +37,36 @@ export default function EntrepreneurPortal({ user, showToast }) {
   const [portfolio, setPortfolio] = useState([]);
   const [openLeads, setOpenLeads] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Business Profile Onboarding State
+  const [submittingProfile, setSubmittingProfile] = useState(false);
+  const [onboardingData, setOnboardingData] = useState({
+    business_name: "",
+    phone: user?.phone || "",
+    city: "Mumbai",
+    experience_years: "3",
+    address: "",
+    bio: ""
+  });
+
+  const handleRegisterBusinessProfile = async (e) => {
+    e.preventDefault();
+    if (!onboardingData.business_name.trim()) {
+      showToast("error", "Please enter your business or craft name");
+      return;
+    }
+    setSubmittingProfile(true);
+    try {
+      await api.createEntrepreneurProfile(onboardingData);
+      showToast("success", "Congratulations! Your Micro-Entrepreneur Business profile has been created!");
+      if (onRefreshUser) await onRefreshUser();
+      fetchData();
+    } catch (err) {
+      showToast("error", err.message || "Failed to register business profile");
+    } finally {
+      setSubmittingProfile(false);
+    }
+  };
 
   // Quote Submission Modal
   const [quotingLead, setQuotingLead] = useState(null);
@@ -214,6 +244,118 @@ export default function EntrepreneurPortal({ user, showToast }) {
 
   const counts = dashboard?.counts || {};
   const ep = dashboard?.entrepreneur || {};
+
+  if (!loading && !ep.id && user?.role !== "ADMIN") {
+    return (
+      <div className="entrepreneur-portal-container" style={{ maxWidth: "700px", margin: "2rem auto" }}>
+        <div className="glass-panel" style={{ padding: "2.5rem", borderRadius: "1.25rem", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
+          <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+            <div style={{ width: "3.5rem", height: "3.5rem", borderRadius: "1rem", background: "linear-gradient(135deg, #e05638, #f59e0b)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
+              <Wrench size={28} />
+            </div>
+            <h2 style={{ fontSize: "1.75rem", fontWeight: 800, color: "#ffffff", marginBottom: "0.5rem" }}>
+              List Your Business on HunarHub FREE
+            </h2>
+            <p style={{ color: "#cbd5e1", fontSize: "0.95rem" }}>
+              Connect directly with local customers searching for verified artisans, repair experts & handcrafted products. Zero commission fees!
+            </p>
+          </div>
+
+          <form onSubmit={handleRegisterBusinessProfile} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            <div>
+              <label className="field-label">Business / Trade Name *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Ramesh Handcrafted Leather & Shoe Care"
+                value={onboardingData.business_name}
+                onChange={(e) => setOnboardingData({ ...onboardingData, business_name: e.target.value })}
+                style={{ width: "100%", padding: "0.75rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "0.5rem", color: "#fff" }}
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div>
+                <label className="field-label">Primary City *</label>
+                <select
+                  value={onboardingData.city}
+                  onChange={(e) => setOnboardingData({ ...onboardingData, city: e.target.value })}
+                  style={{ width: "100%", padding: "0.75rem", background: "#0f172a", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "0.5rem", color: "#fff" }}
+                >
+                  <option value="Mumbai">Mumbai</option>
+                  <option value="Pune">Pune</option>
+                  <option value="Delhi">Delhi</option>
+                  <option value="Bengaluru">Bengaluru</option>
+                  <option value="Jaipur">Jaipur</option>
+                  <option value="Varanasi">Varanasi</option>
+                  <option value="Kolkata">Kolkata</option>
+                  <option value="Chennai">Chennai</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="field-label">Years of Experience *</label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={onboardingData.experience_years}
+                  onChange={(e) => setOnboardingData({ ...onboardingData, experience_years: e.target.value })}
+                  style={{ width: "100%", padding: "0.75rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "0.5rem", color: "#fff" }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div>
+                <label className="field-label">Phone Number *</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="e.g. 9876543210"
+                  value={onboardingData.phone}
+                  onChange={(e) => setOnboardingData({ ...onboardingData, phone: e.target.value })}
+                  style={{ width: "100%", padding: "0.75rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "0.5rem", color: "#fff" }}
+                />
+              </div>
+
+              <div>
+                <label className="field-label">Workshop / Shop Address</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Shop 12, Main Craft Market, Bandra"
+                  value={onboardingData.address}
+                  onChange={(e) => setOnboardingData({ ...onboardingData, address: e.target.value })}
+                  style={{ width: "100%", padding: "0.75rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "0.5rem", color: "#fff" }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="field-label">About Your Work & Craft Specializations</label>
+              <textarea
+                rows="3"
+                placeholder="Describe your craft expertise, services offered, repair guarantees or handmade items..."
+                value={onboardingData.bio}
+                onChange={(e) => setOnboardingData({ ...onboardingData, bio: e.target.value })}
+                style={{ width: "100%", padding: "0.75rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "0.5rem", color: "#fff" }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={submittingProfile}
+              className="btn-primary"
+              style={{ width: "100%", justifyContent: "center", padding: "0.85rem", fontSize: "1rem", marginTop: "0.5rem" }}
+            >
+              <CheckCircle2 size={18} />
+              <span>{submittingProfile ? "Creating Profile..." : "Create Free Business Profile"}</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="entrepreneur-portal-container">

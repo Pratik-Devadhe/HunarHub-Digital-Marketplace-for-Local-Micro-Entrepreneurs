@@ -13,16 +13,37 @@ const createServiceRequest = async (req, res) => {
       customer_note
     } = req.body;
 
+    if (!address || !address.trim()) {
+      throw httpError("Service address is required", 400);
+    }
+
+    if (requested_date) {
+      const parsedDate = new Date(requested_date);
+      if (isNaN(parsedDate.getTime())) {
+        throw httpError("Invalid requested date format", 400);
+      }
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (parsedDate < today) {
+        throw httpError("Requested date cannot be in the past", 400);
+      }
+    }
+
     const row = await withTransaction(async (c) => {
       let estPrice = null;
       let targetEntrepreneurId = entrepreneur_id ? id(entrepreneur_id) : null;
       let targetServiceId = service_id ? id(service_id) : null;
 
       if (targetServiceId) {
-        const svc = await c.query("SELECT * FROM services WHERE id = $1", [targetServiceId]);
-        if (svc.rowCount) {
-          estPrice = svc.rows[0].price;
-          if (!targetEntrepreneurId) targetEntrepreneurId = svc.rows[0].entrepreneur_id;
+        const svc = await c.query("SELECT * FROM services WHERE id = $1 AND is_active = true", [targetServiceId]);
+        if (!svc.rowCount) {
+          throw httpError("Service not found or is currently inactive", 404);
+        }
+        estPrice = svc.rows[0].price;
+        if (!targetEntrepreneurId) {
+          targetEntrepreneurId = svc.rows[0].entrepreneur_id;
+        } else if (Number(targetEntrepreneurId) !== Number(svc.rows[0].entrepreneur_id)) {
+          throw httpError("Selected service does not belong to the requested entrepreneur", 400);
         }
       }
 
@@ -41,6 +62,27 @@ const createServiceRequest = async (req, res) => {
         throw httpError("Both entrepreneur and service selection are required", 400);
       }
 
+      // Verify Entrepreneur status
+      const epCheck = await c.query("SELECT verification_status FROM entrepreneur_profiles WHERE id = $1", [targetEntrepreneurId]);
+      if (!epCheck.rowCount) {
+        throw httpError("Entrepreneur profile not found", 404);
+      }
+
+      // Check double-booking slot conflict
+      if (requested_date && requested_time) {
+        const conflict = await c.query(
+          `SELECT id FROM service_requests
+           WHERE entrepreneur_id = $1
+             AND requested_date = $2::date
+             AND requested_time = $3::time
+             AND status IN ('PENDING', 'ACCEPTED', 'IN_PROGRESS')`,
+          [targetEntrepreneurId, requested_date, requested_time]
+        );
+        if (conflict.rowCount) {
+          throw httpError("Artisan already has a pending or confirmed booking for this date and time slot. Please select a different time slot.", 409);
+        }
+      }
+
       const r = await c.query(
         `INSERT INTO service_requests
          (customer_id, entrepreneur_id, service_id, description,
@@ -55,7 +97,7 @@ const createServiceRequest = async (req, res) => {
           estPrice ? Number(estPrice) : null,
           requested_date || null,
           requested_time || null,
-          address || null,
+          address.trim(),
           customer_note || null
         ]
       );

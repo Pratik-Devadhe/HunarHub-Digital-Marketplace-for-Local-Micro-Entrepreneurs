@@ -1,41 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Lock, Mail, User, Phone, ShieldCheck, Zap } from "lucide-react";
 import "./AuthModal.css";
 
-export default function AuthModal({ isOpen, onClose, onLogin, onRegister, showToast }) {
-  if (!isOpen) return null;
-
-  const [isLoginView, setIsLoginView] = useState(true);
+export default function AuthModal({ isOpen, initialRole, isSignUpView, onClose, onLogin, onRegister, showToast }) {
+  const [isLoginView, setIsLoginView] = useState(!isSignUpView);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     full_name: "",
     phone: "",
-    role: "CUSTOMER"
+    role: initialRole || "CUSTOMER"
   });
   const [loading, setLoading] = useState(false);
 
-  const personas = [
-    { name: "Ananya (Customer)", email: "ananya@gmail.com", pass: "password123", role: "CUSTOMER", icon: "👤" },
-    { name: "Vikram (Customer)", email: "vikram@gmail.com", pass: "password123", role: "CUSTOMER", icon: "👤" },
-    { name: "Ramesh (Cobbler)", email: "ramesh@hunarhub.com", pass: "password123", role: "ENTREPRENEUR", icon: "👞" },
-    { name: "Lakshmi (Potter)", email: "lakshmi@hunarhub.com", pass: "password123", role: "ENTREPRENEUR", icon: "🏺" },
-    { name: "Sunita (Weaver)", email: "sunita@hunarhub.com", pass: "password123", role: "ENTREPRENEUR", icon: "🧵" },
-    { name: "System Admin", email: "admin@hunarhub.com", pass: "admin123", role: "ADMIN", icon: "🛡️" }
-  ];
-
-  const handleQuickLogin = async (p) => {
-    setLoading(true);
-    try {
-      await onLogin(p.email, p.pass);
-      showToast("success", `Logged in as ${p.name}`);
-      onClose();
-    } catch (err) {
-      showToast("error", err.message || "Quick login failed");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (isOpen) {
+      if (initialRole) setFormData((prev) => ({ ...prev, role: initialRole }));
+      if (typeof isSignUpView === "boolean") setIsLoginView(!isSignUpView);
     }
-  };
+  }, [isOpen, initialRole, isSignUpView]);
+
+  if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();

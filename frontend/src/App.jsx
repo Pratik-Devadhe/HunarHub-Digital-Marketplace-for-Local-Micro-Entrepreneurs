@@ -36,11 +36,20 @@ export default function App() {
   // Cart & Modal State
   const [cartItems, setCartItems] = useState([]);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authModalOptions, setAuthModalOptions] = useState({ isSignUp: false, role: "CUSTOMER" });
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [bookingService, setBookingService] = useState(null);
   const [bookingMode, setBookingMode] = useState("book"); // "book" | "quote"
   const [quoteTarget, setQuoteTarget] = useState(null); // { service, category }
   const [reviewItem, setReviewItem] = useState(null);
+
+  const handleOpenAuth = (opts = {}) => {
+    setAuthModalOptions({
+      isSignUp: opts.isSignUp || false,
+      role: opts.role || "CUSTOMER"
+    });
+    setIsAuthOpen(true);
+  };
 
   // Toast Notification State
   const [toast, setToast] = useState(null);
@@ -210,7 +219,7 @@ export default function App() {
         user={user}
         cartCount={cartItems.reduce((acc, i) => acc + i.quantity, 0)}
         onOpenCart={() => setIsCartOpen(true)}
-        onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenAuth={(opts) => handleOpenAuth(opts)}
         onLogout={handleLogout}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -276,7 +285,7 @@ export default function App() {
                   <ShieldAlert style={{ width: "2.5rem", height: "2.5rem", color: "#F59E0B" }} />
                   <h3>Authentication Required</h3>
                   <p>Please sign in to access your activity history and bookings.</p>
-                  <button onClick={() => setIsAuthOpen(true)} className="btn-primary">
+                  <button onClick={() => handleOpenAuth()} className="btn-primary">
                     <LogIn style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} />
                     <span>Sign In to Continue</span>
                   </button>
@@ -293,19 +302,20 @@ export default function App() {
           <Route
             path="/entrepreneur"
             element={
-              user && (user.role === "ENTREPRENEUR" || user.role === "ADMIN") ? (
+              user ? (
                 <EntrepreneurPortal
                   user={user}
                   showToast={showToast}
+                  onRefreshUser={loadInitialData}
                 />
               ) : (
                 <div className="empty-search-box" style={{ margin: "4rem auto", maxWidth: "500px" }}>
                   <ShieldAlert style={{ width: "2.5rem", height: "2.5rem", color: "#F59E0B" }} />
-                  <h3>Entrepreneur Access Required</h3>
-                  <p>You need to be signed in as a registered Micro-Entrepreneur to access the Entrepreneur Hub.</p>
-                  <button onClick={() => setIsAuthOpen(true)} className="btn-primary">
+                  <h3>List Your Business on HunarHub FREE</h3>
+                  <p>Sign in or register a free account to list your business and receive local customer leads.</p>
+                  <button onClick={() => handleOpenAuth({ isSignUp: true, role: "ENTREPRENEUR" })} className="btn-primary">
                     <LogIn style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} />
-                    <span>Sign In as Entrepreneur</span>
+                    <span>List Business FREE / Register Account</span>
                   </button>
                 </div>
               )
@@ -325,7 +335,7 @@ export default function App() {
                   <ShieldAlert style={{ width: "2.5rem", height: "2.5rem", color: "#FB7185" }} />
                   <h3>Admin Authorization Required</h3>
                   <p>This portal is restricted to HunarHub System Administrators only.</p>
-                  <button onClick={() => setIsAuthOpen(true)} className="btn-primary">
+                  <button onClick={() => handleOpenAuth()} className="btn-primary">
                     <LogIn style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} />
                     <span>Sign In as Admin</span>
                   </button>
@@ -340,11 +350,13 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <Footer onOpenAuth={() => setIsAuthOpen(true)} />
+      <Footer onOpenAuth={(opts) => handleOpenAuth(opts)} />
 
       {/* Modals & Overlay Drawers */}
       <AuthModal
         isOpen={isAuthOpen}
+        isSignUpView={authModalOptions.isSignUp}
+        initialRole={authModalOptions.role}
         onClose={() => setIsAuthOpen(false)}
         onLogin={handleLogin}
         onRegister={handleRegister}

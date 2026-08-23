@@ -363,15 +363,16 @@ export default function Marketplace({
           </div>
 
           {/* Verified Only Checkbox */}
-          <div className="filter-select-group" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1.2rem" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", fontSize: "0.88rem", fontWeight: 600, color: "#334155" }}>
+          <div className="filter-select-group">
+            <label className="filter-label">Verification</label>
+            <label className="filter-checkbox-container">
               <input
                 type="checkbox"
                 checked={verifiedOnly}
                 onChange={(e) => setVerifiedOnly(e.target.checked)}
-                style={{ accentColor: "#d97706" }}
+                style={{ accentColor: "#d97706", width: "16px", height: "16px", cursor: "pointer" }}
               />
-              Verified Badges Only
+              <span>Verified Badges Only</span>
             </label>
           </div>
 
