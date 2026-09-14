@@ -6,7 +6,7 @@ const epId=async(c,userId)=>{const r=await c.query("SELECT id FROM entrepreneur_
 const getProducts = async (req, res) => {
   try {
     const vals = [];
-    const w = ["p.is_available = true"];
+    const w = ["p.is_available = true", "ep.verification_status = 'APPROVED'"];
     let n = 1;
 
     if (req.query.category_id) {

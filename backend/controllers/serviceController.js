@@ -4,7 +4,7 @@ const {httpError,sendError,id}=require("../utils/http");
 const getServices = async (req, res) => {
   try {
     const vals = [];
-    const w = ["s.is_active = true"];
+    const w = ["s.is_active = true", "ep.verification_status = 'APPROVED'"];
     let n = 1;
 
     if (req.query.category_id) {

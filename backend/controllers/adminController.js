@@ -200,7 +200,7 @@ const resolveComplaint = async (req, res) => {
     if (!["RESOLVED", "REJECTED", "UNDER_REVIEW"].includes(status)) throw httpError("Invalid complaint status");
     const row = await withTransaction(async (c) => {
       const r = await c.query(
-        `UPDATE complaints SET status = $1, admin_response = $2, resolved_at = CASE WHEN $1 IN ('RESOLVED','REJECTED') THEN CURRENT_TIMESTAMP ELSE NULL END
+        `UPDATE complaints SET status = $1::varchar, admin_response = $2, resolved_at = CASE WHEN $1::varchar IN ('RESOLVED','REJECTED') THEN CURRENT_TIMESTAMP ELSE NULL END
          WHERE id = $3 RETURNING *`,
         [status, admin_response || null, id(req.params.id, "complaint id")]
       );

@@ -139,7 +139,7 @@ const acceptQuote = async (req, res) => {
       if (!qRes.rowCount) throw httpError("Quote not found", 404);
 
       const quote = qRes.rows[0];
-      if (req.user.role !== "ADMIN" && quote.customer_id !== req.user.id) {
+      if (req.user.role !== "ADMIN" && Number(quote.customer_id) !== Number(req.user.id)) {
         throw httpError("Only the customer who created this request can accept a quote", 403);
       }
 
@@ -192,8 +192,8 @@ const rejectQuote = async (req, res) => {
       const quote = qRes.rows[0];
       if (
         req.user.role !== "ADMIN" &&
-        quote.customer_id !== req.user.id &&
-        quote.entrepreneur_user_id !== req.user.id
+        Number(quote.customer_id) !== Number(req.user.id) &&
+        Number(quote.entrepreneur_user_id) !== Number(req.user.id)
       ) {
         throw httpError("You do not have permission to reject this quote", 403);
       }

@@ -183,18 +183,18 @@ export default function Marketplace({
         <div className="sulekha-hero-content">
           <div className="sulekha-hero-badge">
             <Sparkles className="hero-badge-icon text-amber" />
-            <span>India's Premier Local Expert & Micro-Entrepreneur Platform</span>
+            <span>Digital Marketplace for Local Micro-Entrepreneurs</span>
           </div>
 
           <h1 className="sulekha-hero-title">
-            Get Matched with Top <br />
+            Every Skill Has a Story. <br />
             <span className="hero-title-highlight">
-              Verified Local Experts
-            </span> Near You
+              Every Skill Deserves an Opportunity.
+            </span>
           </h1>
 
           <p className="sulekha-hero-subtitle">
-            Compare free price quotes for Cobbler Resoling, Earthen Pottery, Designer Tailoring, Appliance Servicing, Shifting, Painting, and Craft Work in your city.
+            Discover local talent. Support local skills. Create local opportunities. Connect directly with verified Cobblers, Potters (Kumhars), Tailors, Artisans, and Small Vendors with zero commission fees.
           </p>
 
           {/* SULEKHA HERO SEARCH & LEAD WIDGET */}
@@ -203,7 +203,7 @@ export default function Marketplace({
               <Search className="widget-icon text-amber" />
               <input
                 type="text"
-                placeholder="What service do you need? (e.g. shoe resoling, tailor, AC repair...)"
+                placeholder="Search craft, artisan or service (e.g. shoe repair, terracotta pottery, tailoring...)"
                 value={heroSearch}
                 onChange={(e) => setHeroSearch(e.target.value)}
               />

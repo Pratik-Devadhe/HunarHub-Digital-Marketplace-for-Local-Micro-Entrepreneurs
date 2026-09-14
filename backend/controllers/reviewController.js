@@ -55,7 +55,7 @@ const createReview = async (req, res) => {
           "SELECT id, customer_id, entrepreneur_id, status FROM service_requests WHERE id = $1",
           [service_request_id]
         );
-        if (!s.rowCount || s.rows[0].customer_id !== req.user.id || s.rows[0].status !== "COMPLETED") {
+        if (!s.rowCount || Number(s.rows[0].customer_id) !== Number(req.user.id) || s.rows[0].status !== "COMPLETED") {
           throw httpError("Reviews can only be submitted for completed service requests", 403);
         }
       } else {
@@ -133,7 +133,7 @@ const updateReview = async (req, res) => {
     const row = await withTransaction(async (c) => {
       const old = await c.query("SELECT * FROM reviews WHERE id = $1 FOR UPDATE", [id(req.params.id)]);
       if (!old.rowCount) throw httpError("Review not found", 404);
-      if (old.rows[0].customer_id !== req.user.id) throw httpError("Access denied", 403);
+      if (Number(old.rows[0].customer_id) !== Number(req.user.id)) throw httpError("Access denied", 403);
 
       const r = await c.query(
         "UPDATE reviews SET rating = COALESCE($1, rating), comment = COALESCE($2, comment) WHERE id = $3 RETURNING *",
@@ -144,7 +144,7 @@ const updateReview = async (req, res) => {
         [old.rows[0].entrepreneur_id]
       );
       await c.query(
-        "UPDATE entrepreneur_profiles SET average_rating = $1, total_reviews = $2 WHERE id = $3",
+        "UPDATE entrepreneur_profiles SET average_rating = $1, total_reviews = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3",
         [avg.rows[0].avg || 0, avg.rows[0].count, old.rows[0].entrepreneur_id]
       );
       return r.rows[0];
@@ -160,7 +160,7 @@ const deleteReview = async (req, res) => {
     await withTransaction(async (c) => {
       const old = await c.query("SELECT * FROM reviews WHERE id = $1 FOR UPDATE", [id(req.params.id)]);
       if (!old.rowCount) throw httpError("Review not found", 404);
-      if (req.user.role !== "ADMIN" && old.rows[0].customer_id !== req.user.id) throw httpError("Access denied", 403);
+      if (req.user.role !== "ADMIN" && Number(old.rows[0].customer_id) !== Number(req.user.id)) throw httpError("Access denied", 403);
 
       await c.query("DELETE FROM reviews WHERE id = $1", [id(req.params.id)]);
       const avg = await c.query(

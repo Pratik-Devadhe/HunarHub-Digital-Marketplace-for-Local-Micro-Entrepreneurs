@@ -56,7 +56,6 @@ apiRouter.use("/messages", require("./routes/messageRoutes"));
 apiRouter.use("/admin", require("./routes/adminRoutes"));
 
 app.use("/api", apiRouter);
-app.use(apiRouter);
 
 app.use((req,res)=>res.status(404).json({success:false,message:"Endpoint not found"}));
 

@@ -28,12 +28,12 @@ export default function Footer({ onOpenAuth }) {
           <div>
             <h4 className="footer-col-title">Popular Craft Services</h4>
             <ul className="footer-links-list">
-              <li className="footer-link-item"><Link to="/">Leather & Boot Resoling</Link></li>
-              <li className="footer-link-item"><Link to="/">Designer Blouse & Alteration</Link></li>
-              <li className="footer-link-item"><Link to="/">Earthen Clay Pottery & Utensils</Link></li>
-              <li className="footer-link-item"><Link to="/">AC & Home Appliance Repair</Link></li>
-              <li className="footer-link-item"><Link to="/">Local Household Shifting</Link></li>
-              <li className="footer-link-item"><Link to="/">Wood Carpentry & Furniture</Link></li>
+              <li className="footer-link-item"><Link to="/">Cobbler & Leather Resoling</Link></li>
+              <li className="footer-link-item"><Link to="/">Tailoring, Stitching & Alteration</Link></li>
+              <li className="footer-link-item"><Link to="/">Potter (Kumhar) & Earthen Crafts</Link></li>
+              <li className="footer-link-item"><Link to="/">Handmade Artisan & Handicrafts</Link></li>
+              <li className="footer-link-item"><Link to="/">Small Vendors & Traditional Goods</Link></li>
+              <li className="footer-link-item"><Link to="/">Traditional Woodwork & Carving</Link></li>
             </ul>
           </div>
 

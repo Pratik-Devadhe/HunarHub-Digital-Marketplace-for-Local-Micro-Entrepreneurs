@@ -55,10 +55,10 @@ export default function Navbar({
             </div>
             <div>
               <span className="brand-text-title">
-                HunarHub <span className="sulekha-tag">Artisan Network</span>
+                HunarHub <span className="sulekha-tag">Artisan Platform</span>
               </span>
               <span className="brand-text-sub">
-                Verified Local Experts & Micro-Entrepreneurs
+                Local Micro-Entrepreneurs & Verified Crafts
               </span>
             </div>
           </div>

@@ -294,7 +294,7 @@ const transition = async (req, res, nextStatus, allowedFrom, actor) => {
   }
 };
 
-const cancelServiceRequest = (req, res) => transition(req, res, "CANCELLED", ["PENDING", "ACCEPTED", "IN_PROGRESS"], "customer");
+const cancelServiceRequest = (req, res) => transition(req, res, "CANCELLED", ["PENDING", "REQUESTED"], "customer");
 const acceptServiceRequest = (req, res) => transition(req, res, "ACCEPTED", ["PENDING"], "entrepreneur");
 const rejectServiceRequest = (req, res) => transition(req, res, "REJECTED", ["PENDING"], "entrepreneur");
 const confirmServiceRequest = (req, res) => transition(req, res, "ACCEPTED", ["PENDING"], "entrepreneur");
