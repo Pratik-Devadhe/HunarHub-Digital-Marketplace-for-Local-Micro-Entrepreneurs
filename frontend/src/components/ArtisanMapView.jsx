@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { MapPin, Star, ShieldCheck, Phone, FileText, X } from "lucide-react";
+import { MapPin, Star, X } from "lucide-react";
 import "./ArtisanMapView.css";
 
 export default function ArtisanMapView({ artisans, onSelectArtisan, onGetQuote }) {
@@ -24,7 +24,7 @@ export default function ArtisanMapView({ artisans, onSelectArtisan, onGetQuote }
           <span style={{ fontSize: "0.8rem", color: "#f59e0b" }}>{artisans.length} Nearby</span>
         </div>
         <div className="map-sidebar-list">
-          {artisans.map((ep, idx) => {
+          {artisans.map((ep) => {
             const isSelected = selectedArtisan?.id === ep.id;
             return (
               <div

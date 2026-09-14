@@ -11,11 +11,11 @@
   );
   border: 1px solid rgba(245, 158, 11, 0.25);
   padding: 3.5rem 3rem;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 3rem;
+  gap: 2.5rem;
   min-height: 440px;
   box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5), 0 0 50px rgba(245, 158, 11, 0.1);
 }
@@ -36,6 +36,7 @@
   position: relative;
   z-index: 10;
   flex: 1;
+  min-width: 0;
   max-width: 58rem;
   display: flex;
   flex-direction: column;
@@ -202,29 +203,35 @@
 .hero-image-wrapper {
   position: relative;
   flex-shrink: 0;
+  max-width: 100%;
 }
 
 .sulekha-hero-image {
-  width: 480px;
-  height: 350px;
+  width: 440px;
+  max-width: 100%;
+  height: 340px;
   object-fit: cover;
   border-radius: 1.5rem;
   border: 1px solid rgba(245, 158, 11, 0.35);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45), 0 0 40px rgba(245, 158, 11, 0.12);
+  display: block;
 }
 
 .hero-image-badge-floating {
   position: absolute;
-  bottom: -1rem;
-  left: 1.5rem;
+  bottom: 1.25rem;
+  left: 1.25rem;
   background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(16, 185, 129, 0.4);
   border-radius: 1rem;
   padding: 0.75rem 1rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  z-index: 2;
 }
 
 .hero-image-badge-floating strong {
@@ -278,15 +285,17 @@
 
 .categories-cards-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
 }
 
 .category-card-box {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 1.25rem;
+  padding: 1.5rem;
+  min-height: 180px;
   cursor: pointer;
   transition: all 0.25s ease;
   display: flex;
@@ -356,17 +365,20 @@
 /* SULEKHA PROVIDER & EXPERT CARDS & GRID */
 .catalog-grid-4 {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  column-gap: 24px;
-  row-gap: 32px;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 1.75rem;
   width: 100%;
+}
+
+.catalog-grid-experts {
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
 }
 
 .catalog-card {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 1.25rem;
+  padding: 1.5rem;
   border-radius: var(--radius-lg);
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -385,20 +397,21 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.85rem;
 }
 
 .card-title {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 800;
   color: var(--text-heading);
   margin: 0;
+  line-height: 1.35;
 }
 
 .card-description {
-  font-size: 0.825rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
-  line-height: 1.45;
+  line-height: 1.5;
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -408,12 +421,12 @@
 
 .card-bottom-footer {
   margin-top: auto;
-  padding-top: 0.85rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
   width: 100%;
   box-sizing: border-box;
@@ -423,6 +436,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .price-box-title {
@@ -435,7 +449,7 @@
 }
 
 .price-box-amount {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: var(--primary-amber);
   line-height: 1.2;
@@ -444,23 +458,26 @@
 .card-actions-group {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
   justify-content: flex-end;
-  max-width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .card-actions-group button {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  padding: 0.45rem 0.65rem;
+  padding: 0.5rem 0.85rem;
   border-radius: var(--radius-md);
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
   line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .card-actions-group button svg,
@@ -573,15 +590,16 @@
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 1.25rem;
+  gap: 1.5rem;
   padding: 1.5rem;
+  min-height: 220px;
 }
 
 .expert-card-left {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.65rem;
   flex-shrink: 0;
 }
 
@@ -608,15 +626,17 @@
 
 .expert-card-right {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.75rem;
 }
 
 .expert-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .expert-business-title {
@@ -635,7 +655,7 @@
 .expert-tags-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
 .expert-tag-item {
@@ -643,14 +663,17 @@
   font-weight: 600;
   color: #cbd5e1;
   background: rgba(255, 255, 255, 0.05);
-  padding: 0.2rem 0.5rem;
+  padding: 0.25rem 0.55rem;
   border-radius: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .expert-bio {
-  font-size: 0.8rem;
+  font-size: 0.825rem;
   color: #94a3b8;
-  line-height: 1.45;
+  line-height: 1.5;
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -660,8 +683,23 @@
 
 .expert-actions-row {
   display: flex;
-  gap: 0.6rem;
-  margin-top: 0.25rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+.expert-actions-row button {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.45rem 0.8rem;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 /* SULEKHA TRUST & WHY CHOOSE US BANNER */
@@ -918,7 +956,7 @@
 
 .filter-dropdowns-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 1.25rem;
   align-items: flex-end;
   width: 100%;
@@ -929,7 +967,7 @@
   flex-direction: column;
   gap: 0.45rem;
   flex: 1;
-  min-width: 170px;
+  min-width: 180px;
 }
 
 .filter-label {
@@ -942,7 +980,9 @@
 
 .filter-select-control {
   width: 100%;
-  padding: 0.65rem 0.85rem;
+  height: 44px;
+  min-height: 44px;
+  padding: 0.6rem 0.85rem;
   background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -951,6 +991,7 @@
   font-weight: 600;
   outline: none;
   cursor: pointer;
+  box-sizing: border-box;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -963,7 +1004,7 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.65rem 0.85rem;
+  padding: 0.6rem 0.85rem;
   background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -971,7 +1012,8 @@
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-main);
-  height: 42px;
+  height: 44px;
+  min-height: 44px;
   box-sizing: border-box;
   transition: border-color 0.2s ease;
 }
@@ -1037,10 +1079,15 @@
     flex-direction: column;
     align-items: stretch;
     padding: 2.5rem 2rem;
+    gap: 2rem;
   }
   .sulekha-hero-image {
     width: 100%;
     height: 280px;
+  }
+  .catalog-grid-4 {
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 1.5rem;
   }
   .categories-cards-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -1061,6 +1108,10 @@
     flex-direction: column;
     align-items: stretch;
   }
+  .catalog-grid-4 {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
   .categories-cards-grid {
     grid-template-columns: 1fr;
   }
@@ -1069,5 +1120,60 @@
   }
   .sulekha-expert-card {
     flex-direction: column;
+    align-items: stretch;
+    gap: 1.25rem;
+  }
+  .expert-card-left {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+  }
+  .expert-card-avatar {
+    width: 4rem;
+    height: 4rem;
+  }
+  .expert-actions-row {
+    width: 100%;
+  }
+  .expert-actions-row button {
+    flex: 1;
+    justify-content: center;
+  }
+  .card-bottom-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .card-actions-group {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .card-actions-group button {
+    flex: 1;
+  }
+  .marketplace-tabs-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  .tab-selector-group {
+    width: 100%;
+  }
+  .tab-btn {
+    flex: 1;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .sulekha-hero-banner {
+    padding: 1.75rem 1.25rem;
+    border-radius: 1.25rem;
+  }
+  .sulekha-hero-title {
+    font-size: 1.85rem;
+  }
+  .catalog-card {
+    padding: 1.25rem;
   }
 }

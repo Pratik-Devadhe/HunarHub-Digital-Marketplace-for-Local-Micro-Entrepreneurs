@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { X, Send, CircleCheck, Image, Shield } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { X, Send, CircleCheck } from "lucide-react";
 import { api } from "../services/api";
 import "./ChatModal.css";
 
@@ -11,7 +11,7 @@ export default function ChatModal({ partner, serviceRequestId, onClose, currentU
 
   const partnerUserId = partner?.user_id || partner?.id;
 
-  const fetchMessages = () => {
+  const fetchMessages = useCallback(() => {
     if (!partnerUserId) return;
     api.getMessages({ with_user_id: partnerUserId, service_request_id: serviceRequestId })
       .then((res) => {
@@ -21,13 +21,13 @@ export default function ChatModal({ partner, serviceRequestId, onClose, currentU
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
-  };
+  }, [partnerUserId, serviceRequestId]);
 
   useEffect(() => {
     fetchMessages();
     const interval = setInterval(fetchMessages, 4000); // Polling every 4s
     return () => clearInterval(interval);
-  }, [partnerUserId, serviceRequestId]);
+  }, [fetchMessages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

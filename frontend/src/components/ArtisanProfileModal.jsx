@@ -3,7 +3,6 @@ import {
   X,
   Star,
   MapPin,
-  Clock,
   ShieldCheck,
   CheckCircle,
   Briefcase,
@@ -11,10 +10,11 @@ import {
   Phone,
   MessageSquare,
   FileText,
-  Calendar,
   Heart,
   Package,
-  Layers
+  Layers,
+  Clock,
+  Tag
 } from "lucide-react";
 import { api } from "../services/api";
 import "./ArtisanProfileModal.css";
@@ -43,11 +43,11 @@ export default function ArtisanProfileModal({ artisanId, onClose, onRequestServi
   const handleToggleFavorite = () => {
     if (isFavorited) {
       setIsFavorited(false);
-      showToast && showToast("Removed from saved favorites", "info");
+      if (showToast) showToast("Removed from saved favorites", "info");
     } else {
       setIsFavorited(true);
       api.addFavorite({ entrepreneur_id: artisanId }).catch(() => {});
-      showToast && showToast("Saved artisan to favorites!", "success");
+      if (showToast) showToast("Saved artisan to favorites!", "success");
     }
   };
 
@@ -184,6 +184,77 @@ export default function ArtisanProfileModal({ artisanId, onClose, onRequestServi
                     <h4>Location & Workshop Address</h4>
                     <p>{artisan.address || "Main Market Workshop"}, {artisan.city || "City"}, {artisan.state || "State"} - {artisan.pincode || "400001"}</p>
                   </div>
+
+                  {/* Skills & Trade Expertise */}
+                  {artisan.skills && artisan.skills.length > 0 && (
+                    <div className="artisan-bio-box">
+                      <h4 style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <Tag size={16} color="#f59e0b" /> Specialized Skills & Craft Expertise
+                      </h4>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.6rem" }}>
+                        {artisan.skills.map((s) => (
+                          <span
+                            key={s.id}
+                            style={{
+                              background: "rgba(245, 158, 11, 0.12)",
+                              color: "#fbbf24",
+                              border: "1px solid rgba(245, 158, 11, 0.3)",
+                              padding: "0.35rem 0.8rem",
+                              borderRadius: "9999px",
+                              fontSize: "0.85rem",
+                              fontWeight: 600,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.35rem"
+                            }}
+                          >
+                            <span>🏷️</span>
+                            <span>{s.name}</span>
+                            {s.category_name && (
+                              <span style={{ opacity: 0.65, fontSize: "0.78rem" }}>({s.category_name})</span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Operating Hours & Availability */}
+                  {artisan.availability && artisan.availability.length > 0 && (
+                    <div className="artisan-bio-box">
+                      <h4 style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <Clock size={16} color="#f59e0b" /> Operating Hours & Availability Schedule
+                      </h4>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.6rem", marginTop: "0.6rem" }}>
+                        {artisan.availability
+                          .filter((slot) => slot.is_available)
+                          .map((slot) => {
+                            const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                            const dayName = days[slot.day_of_week] || `Day ${slot.day_of_week}`;
+                            const startTime = slot.start_time ? slot.start_time.slice(0, 5) : "";
+                            const endTime = slot.end_time ? slot.end_time.slice(0, 5) : "";
+                            return (
+                              <div
+                                key={slot.id || `${slot.day_of_week}_${startTime}`}
+                                style={{
+                                  background: "rgba(15, 23, 42, 0.6)",
+                                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                                  borderRadius: "8px",
+                                  padding: "0.55rem 0.8rem",
+                                  fontSize: "0.85rem"
+                                }}
+                              >
+                                <div style={{ color: "#f59e0b", fontWeight: 700 }}>{dayName}</div>
+                                <div style={{ color: "#94a3b8", fontSize: "0.8rem", marginTop: "2px" }}>
+                                  <Clock size={12} style={{ display: "inline", marginRight: "4px" }} />
+                                  {startTime} – {endTime}
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -299,7 +370,7 @@ export default function ArtisanProfileModal({ artisanId, onClose, onRequestServi
                   className="btn-sec-outline"
                   onClick={() => {
                     onClose();
-                    onOpenChat && onOpenChat(artisan);
+                    if (onOpenChat) onOpenChat(artisan);
                   }}
                 >
                   <MessageSquare size={16} /> Send Message
@@ -308,7 +379,7 @@ export default function ArtisanProfileModal({ artisanId, onClose, onRequestServi
                   className="btn-primary-amber"
                   onClick={() => {
                     onClose();
-                    onRequestService && onRequestService(artisan);
+                    if (onRequestService) onRequestService(artisan);
                   }}
                 >
                   <FileText size={16} /> Get Free Quote

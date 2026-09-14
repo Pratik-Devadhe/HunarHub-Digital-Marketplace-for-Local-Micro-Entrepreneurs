@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, CheckCircle2, ShieldCheck, MapPin, Calendar, Clock, Sparkles, Send, PhoneCall, Star, ArrowRight, UserCheck } from "lucide-react";
+import { X, CheckCircle2, ShieldCheck, MapPin, Clock, Sparkles, Send, PhoneCall, Star, ArrowRight, UserCheck } from "lucide-react";
 import "./QuoteWizardModal.css";
 
 export default function QuoteWizardModal({

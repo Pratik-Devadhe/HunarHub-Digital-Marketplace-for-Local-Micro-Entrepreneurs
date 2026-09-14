@@ -2,14 +2,10 @@ import React, { useState, useEffect } from "react";
 import {
   Package,
   Calendar,
-  Clock,
   MapPin,
-  CheckCircle2,
   CreditCard,
   Star,
   RefreshCw,
-  AlertCircle,
-  ShieldCheck,
   MessageSquareQuote,
   MessageSquare,
   Heart,
@@ -17,17 +13,18 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  FileText
+  AlertTriangle
 } from "lucide-react";
 import { api } from "../services/api";
 import ChatModal from "./ChatModal";
 import "./CustomerPortal.css";
 
 export default function CustomerPortal({ onOpenReview, showToast, currentUser }) {
-  const [activeTab, setActiveTab] = useState("requests"); // "requests" | "orders" | "favorites"
+  const [activeTab, setActiveTab] = useState("requests"); // "requests" | "orders" | "favorites" | "complaints"
   const [orders, setOrders] = useState([]);
   const [requests, setRequests] = useState([]);
   const [favorites, setFavorites] = useState([]);
+  const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Quotes drawer state
@@ -38,26 +35,57 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
   // Chat Modal State
   const [chatPartner, setChatPartner] = useState(null);
 
+  // Dispute / Complaint Modal State
+  const [complaintTarget, setComplaintTarget] = useState(null);
+  const [complaintForm, setComplaintForm] = useState({ subject: "", description: "" });
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [ordRes, reqRes, favRes] = await Promise.all([
+      const [ordRes, reqRes, favRes, cmpRes] = await Promise.all([
         api.getMyOrders().catch(() => ({ orders: [] })),
         api.getMyServiceRequests().catch(() => ({ requests: [] })),
-        api.getFavorites().catch(() => ({ favorites: [] }))
+        api.getFavorites().catch(() => ({ favorites: [] })),
+        api.getMyComplaints().catch(() => ({ complaints: [] }))
       ]);
       setOrders(ordRes.orders || []);
       setRequests(reqRes.requests || []);
       setFavorites(favRes.favorites || []);
+      setComplaints(cmpRes.complaints || []);
     } catch (err) {
+      console.error("Failed to load customer dashboard data:", err);
       showToast("error", "Failed to load customer dashboard data");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSubmitComplaint = async (e) => {
+    e.preventDefault();
+    if (!complaintForm.subject.trim() || !complaintForm.description.trim()) {
+      showToast("error", "Subject and description are required");
+      return;
+    }
+    try {
+      await api.createComplaint({
+        order_id: complaintTarget.order_id || null,
+        service_request_id: complaintTarget.service_request_id || null,
+        entrepreneur_id: complaintTarget.entrepreneur_id || null,
+        subject: complaintForm.subject.trim(),
+        description: complaintForm.description.trim()
+      });
+      showToast("success", "Dispute complaint submitted. Admin will review it.");
+      setComplaintTarget(null);
+      setComplaintForm({ subject: "", description: "" });
+      fetchData();
+    } catch (err) {
+      showToast("error", err.message || "Failed to submit dispute");
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleQuotes = (srId) => {
@@ -100,12 +128,21 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
   const handlePayOrder = async (orderId) => {
     try {
       const pOrder = await api.createPaymentOrder({ order_id: orderId });
-      await api.verifyPayment({
-        razorpay_order_id: pOrder.razorpay_order.id,
-        razorpay_payment_id: `pay_mock_${Date.now()}`,
-        order_id: orderId
-      });
-      showToast("success", "Payment successful! Order updated.");
+      if (pOrder?.is_configured && pOrder?.razorpay_order?.id) {
+        await api.verifyPayment({
+          razorpay_order_id: pOrder.razorpay_order.id,
+          razorpay_payment_id: `pay_mock_${Date.now()}`,
+          razorpay_signature: "mock_signature",
+          payment_method: "RAZORPAY",
+          order_id: orderId
+        });
+      } else {
+        await api.verifyPayment({
+          payment_method: "DIRECT_UPI",
+          order_id: orderId
+        });
+      }
+      showToast("success", "Payment successful! Order confirmed.");
       fetchData();
     } catch (err) {
       showToast("error", err.message || "Payment failed");
@@ -115,12 +152,21 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
   const handlePayServiceRequest = async (srId) => {
     try {
       const pOrder = await api.createPaymentOrder({ service_request_id: srId });
-      await api.verifyPayment({
-        razorpay_order_id: pOrder.razorpay_order.id,
-        razorpay_payment_id: `pay_mock_${Date.now()}`,
-        service_request_id: srId
-      });
-      showToast("success", "Payment successful for service request!");
+      if (pOrder?.is_configured && pOrder?.razorpay_order?.id) {
+        await api.verifyPayment({
+          razorpay_order_id: pOrder.razorpay_order.id,
+          razorpay_payment_id: `pay_mock_${Date.now()}`,
+          razorpay_signature: "mock_signature",
+          payment_method: "RAZORPAY",
+          service_request_id: srId
+        });
+      } else {
+        await api.verifyPayment({
+          payment_method: "DIRECT_UPI",
+          service_request_id: srId
+        });
+      }
+      showToast("success", "Payment successful! Service request is now in progress.");
       fetchData();
     } catch (err) {
       showToast("error", err.message || "Payment failed");
@@ -169,6 +215,13 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
         >
           <Heart className="w-4 h-4" />
           <span>Saved Favorites ({favorites.length})</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("complaints")}
+          className={`portal-tab-btn ${activeTab === "complaints" ? "active" : ""}`}
+        >
+          <AlertTriangle className="w-4 h-4" />
+          <span>Disputes & Complaints ({complaints.length})</span>
         </button>
       </div>
 
@@ -281,6 +334,22 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
                         <span>Rate Service</span>
                       </button>
                     )}
+                    <button
+                      onClick={() => {
+                        setComplaintTarget({
+                          service_request_id: sr.id,
+                          entrepreneur_id: sr.entrepreneur_id,
+                          title: sr.title || sr.service_title || `Service Request #${sr.id}`
+                        });
+                        setComplaintForm({ subject: "", description: "" });
+                      }}
+                      className="btn-sec-outline btn-xs"
+                      style={{ color: "#f59e0b", fontSize: "0.82rem" }}
+                      title="Report issue or raise dispute"
+                    >
+                      <AlertTriangle size={13} />
+                      <span>Report Issue</span>
+                    </button>
                   </div>
                 </div>
 
@@ -447,6 +516,22 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
                       <span>Rate Product</span>
                     </button>
                   )}
+                  <button
+                    onClick={() => {
+                      setComplaintTarget({
+                        order_id: ord.id,
+                        entrepreneur_id: ord.entrepreneur_id,
+                        title: `Product Order #${ord.id}`
+                      });
+                      setComplaintForm({ subject: "", description: "" });
+                    }}
+                    className="btn-sec-outline btn-xs"
+                    style={{ color: "#f59e0b", fontSize: "0.82rem" }}
+                    title="Report issue or raise dispute"
+                  >
+                    <AlertTriangle size={13} />
+                    <span>Report Issue</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -501,6 +586,135 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* DISPUTES & COMPLAINTS TAB */}
+      {activeTab === "complaints" && (
+        <div className="orders-list">
+          {complaints.map((cmp) => (
+            <div key={cmp.id} className="glass-panel order-history-card">
+              <div className="order-card-header">
+                <div>
+                  <div className="order-id-row">
+                    <h3 className="order-id-title">{cmp.subject}</h3>
+                    <span className={`badge ${
+                      cmp.status === "RESOLVED"
+                        ? "badge-completed"
+                        : cmp.status === "REJECTED"
+                        ? "badge-rejected"
+                        : cmp.status === "UNDER_REVIEW"
+                        ? "badge-accepted"
+                        : "badge-pending"
+                    }`}>
+                      {cmp.status}
+                    </span>
+                    {cmp.order_id && <span className="badge badge-accepted">Order #{cmp.order_id}</span>}
+                    {cmp.service_request_id && <span className="badge badge-accepted">Job #{cmp.service_request_id}</span>}
+                  </div>
+                  <p className="portal-subtitle">Filed on: {new Date(cmp.created_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              <div style={{ padding: "0.75rem 0", color: "#cbd5e1", fontSize: "0.92rem", lineHeight: "1.5" }}>
+                <strong style={{ color: "#f8fafc" }}>Issue Description:</strong>
+                <p style={{ marginTop: "0.35rem", color: "#cbd5e1" }}>"{cmp.description}"</p>
+              </div>
+
+              {cmp.admin_response ? (
+                <div style={{ background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.3)", borderRadius: "8px", padding: "0.75rem 1rem", marginTop: "0.5rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", color: "#34d399", fontWeight: 700, fontSize: "0.88rem", marginBottom: "0.25rem" }}>
+                    <Check size={15} /> HunarHub Admin Resolution:
+                  </div>
+                  <p style={{ margin: 0, color: "#e2e8f0", fontSize: "0.88rem" }}>{cmp.admin_response}</p>
+                  {cmp.resolved_at && (
+                    <span style={{ fontSize: "0.75rem", color: "#94a3b8", display: "block", marginTop: "0.35rem" }}>
+                      Resolved on: {new Date(cmp.resolved_at).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div style={{ background: "rgba(245, 158, 11, 0.08)", border: "1px solid rgba(245, 158, 11, 0.2)", borderRadius: "8px", padding: "0.6rem 0.9rem", color: "#fbbf24", fontSize: "0.82rem" }}>
+                  ⏳ Your dispute is currently under active mediation by the HunarHub administrator team.
+                </div>
+              )}
+            </div>
+          ))}
+
+          {complaints.length === 0 && !loading && (
+            <div className="glass-panel empty-state-box">
+              <AlertTriangle className="empty-icon" />
+              <p className="empty-text">No disputes or complaints filed. Everything is in order!</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* RAISE DISPUTE MODAL */}
+      {complaintTarget && (
+        <div className="modal-overlay-backdrop animate-fade-in">
+          <div className="glass-panel modal-dialog-card" style={{ maxWidth: "520px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <AlertTriangle className="text-amber" size={22} />
+                <h3 className="modal-title" style={{ margin: 0 }}>Report Issue / Raise Dispute</h3>
+              </div>
+              <button
+                onClick={() => setComplaintTarget(null)}
+                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: "0.88rem", color: "#cbd5e1", marginBottom: "1rem" }}>
+              File a dispute for <strong>{complaintTarget.title}</strong>. The HunarHub Admin Team will review the details and assist with resolution.
+            </p>
+
+            <form onSubmit={handleSubmitComplaint} className="form-group-stack">
+              <div>
+                <label className="field-label">Subject / Issue Summary *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Incomplete service, Quality issue, Delayed order delivery"
+                  value={complaintForm.subject}
+                  onChange={(e) => setComplaintForm({ ...complaintForm, subject: e.target.value })}
+                  className="form-input"
+                />
+              </div>
+
+              <div>
+                <label className="field-label">Detailed Explanation *</label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Please describe what happened, dates, and expected resolution..."
+                  value={complaintForm.description}
+                  onChange={(e) => setComplaintForm({ ...complaintForm, description: e.target.value })}
+                  className="form-input"
+                />
+              </div>
+
+              <div className="modal-action-row" style={{ marginTop: "1rem" }}>
+                <button
+                  type="button"
+                  onClick={() => setComplaintTarget(null)}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ background: "#e11d48", borderColor: "#e11d48" }}
+                >
+                  <AlertTriangle size={15} />
+                  <span>Submit Dispute</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

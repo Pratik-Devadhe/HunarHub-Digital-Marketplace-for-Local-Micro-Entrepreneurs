@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ShieldCheck, Heart, MapPin, Phone, Mail, Award, Sparkles } from "lucide-react";
+import { ShieldCheck, Heart } from "lucide-react";
 import "./Footer.css";
 
 export default function Footer({ onOpenAuth }) {

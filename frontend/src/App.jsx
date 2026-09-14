@@ -111,6 +111,7 @@ export default function App() {
     if (data.token) {
       localStorage.setItem("token", data.token);
       setUser(data.user);
+      await loadInitialData();
       if (data.user.role === "ENTREPRENEUR") navigate("/entrepreneur");
       else navigate("/");
     }

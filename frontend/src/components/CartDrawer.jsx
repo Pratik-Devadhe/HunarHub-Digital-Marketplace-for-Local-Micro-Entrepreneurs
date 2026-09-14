@@ -10,10 +10,10 @@ export default function CartDrawer({
   onCheckout,
   showToast
 }) {
-  if (!isOpen) return null;
-
   const [shippingAddress, setShippingAddress] = useState("Flat 402, Sunshine Apartments, Bandra West, Mumbai");
   const [loading, setLoading] = useState(false);
+
+  if (!isOpen) return null;
 
   const subtotal = cartItems.reduce((acc, item) => acc + Number(item.price) * item.quantity, 0);
 

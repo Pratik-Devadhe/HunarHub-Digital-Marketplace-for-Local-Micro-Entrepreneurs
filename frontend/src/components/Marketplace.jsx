@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Star,
   MapPin,
@@ -13,24 +13,22 @@ import {
   Search,
   Sparkles,
   Send,
-  PhoneCall,
   ThumbsUp,
   Users,
   ShieldAlert,
   Store,
-  ArrowRight,
   Zap,
   List,
   Map as MapIcon,
   Award,
   CheckCircle,
   MessageSquare,
-  Eye,
-  SlidersHorizontal
+  Eye
 } from "lucide-react";
 import ArtisanProfileModal from "./ArtisanProfileModal";
 import ChatModal from "./ChatModal";
 import ArtisanMapView from "./ArtisanMapView";
+import { api } from "../services/api";
 import "./Marketplace.css";
 import homeImage from "../assets/home.png";
 
@@ -47,16 +45,29 @@ export default function Marketplace({
   onBookService,
   onOpenQuoteWizard,
   onAddToCart,
-  loading,
+  loading: _loading,
   currentUser,
   showToast
 }) {
   const [activeTab, setActiveTab] = useState("services"); // "services" | "entrepreneurs" | "products"
   const [viewMode, setViewMode] = useState("list"); // "list" | "map"
   const [selectedMinRating, setSelectedMinRating] = useState("");
+  const [selectedSkill, setSelectedSkill] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [skills, setSkills] = useState([]);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [sortBy, setSortBy] = useState("recommended");
   const [heroSearch, setHeroSearch] = useState("");
+
+  // Load skills
+  useEffect(() => {
+    api.getSkills()
+      .then((res) => {
+        if (res && res.skills) setSkills(res.skills);
+      })
+      .catch((err) => console.error("Error loading skills in marketplace:", err));
+  }, []);
   
   // Modal states
   const [selectedArtisanForProfile, setSelectedArtisanForProfile] = useState(null);
@@ -74,6 +85,10 @@ export default function Marketplace({
 
   const effectiveSearch = searchQuery || heroSearch;
 
+  const availableSkills = skills.filter(
+    (sk) => !selectedCategory || String(sk.category_id) === String(selectedCategory)
+  );
+
   // Filter & Sort Services
   const filteredServices = services
     .filter((s) => {
@@ -82,16 +97,19 @@ export default function Marketplace({
       const matchesCity = !selectedCity || sCity.toLowerCase() === selectedCity.toLowerCase();
       const rating = Number(s.average_rating || 4.9);
       const matchesRating = !selectedMinRating || rating >= Number(selectedMinRating);
+      const matchesSkill = !selectedSkill || String(s.skill_id) === String(selectedSkill) || s.skill_name?.toLowerCase().includes(selectedSkill.toLowerCase());
+      const matchesMinPrice = !minPrice || Number(s.price) >= Number(minPrice);
+      const matchesMaxPrice = !maxPrice || Number(s.price) <= Number(maxPrice);
       const matchesSearch = !effectiveSearch ||
         s.title?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
         s.description?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
         s.business_name?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
-        s.category_name?.toLowerCase().includes(effectiveSearch.toLowerCase());
-      return matchesCat && matchesCity && matchesRating && matchesSearch;
+        s.category_name?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
+        s.skill_name?.toLowerCase().includes(effectiveSearch.toLowerCase());
+      return matchesCat && matchesCity && matchesRating && matchesSkill && matchesMinPrice && matchesMaxPrice && matchesSearch;
     })
     .sort((a, b) => {
       if (sortBy === "price_asc") return Number(a.price) - Number(b.price);
-      if (sortBy === "price_desc") return Number(b.price) - Number(a.price);
       if (sortBy === "rating_desc") return Number(b.average_rating || 4.9) - Number(a.average_rating || 4.9);
       return 0;
     });
@@ -104,16 +122,17 @@ export default function Marketplace({
       const matchesCity = !selectedCity || pCity.toLowerCase() === selectedCity.toLowerCase();
       const rating = Number(p.average_rating || 4.9);
       const matchesRating = !selectedMinRating || rating >= Number(selectedMinRating);
+      const matchesMinPrice = !minPrice || Number(p.price) >= Number(minPrice);
+      const matchesMaxPrice = !maxPrice || Number(p.price) <= Number(maxPrice);
       const matchesSearch = !effectiveSearch ||
         p.name?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
         p.description?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
         p.business_name?.toLowerCase().includes(effectiveSearch.toLowerCase());
-      return matchesCat && matchesCity && matchesRating && matchesSearch;
+      return matchesCat && matchesCity && matchesRating && matchesMinPrice && matchesMaxPrice && matchesSearch;
     })
     .sort((a, b) => {
       if (sortBy === "price_asc") return Number(a.price) - Number(b.price);
-      if (sortBy === "price_desc") return Number(b.price) - Number(a.price);
-      if (sortBy === "rating_desc") return Number(p.average_rating || 4.9) - Number(a.average_rating || 4.9);
+      if (sortBy === "rating_desc") return Number(b.average_rating || 4.9) - Number(a.average_rating || 4.9);
       return 0;
     });
 
@@ -124,25 +143,31 @@ export default function Marketplace({
       const matchesCity = !selectedCity || e.city?.toLowerCase() === selectedCity.toLowerCase();
       const rating = Number(e.average_rating || 4.9);
       const matchesRating = !selectedMinRating || rating >= Number(selectedMinRating);
-      const matchesVerified = !verifiedOnly || (e.is_identity_verified || e.is_artisan_verified || e.is_business_verified);
+      const matchesVerified = !verifiedOnly || (e.verification_status === "APPROVED" || e.is_identity_verified || e.is_artisan_verified || e.is_business_verified);
+      const matchesSkill = !selectedSkill || (e.bio && e.bio.toLowerCase().includes(selectedSkill.toLowerCase()));
       const matchesSearch = !effectiveSearch ||
         e.business_name?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
         e.full_name?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
         e.city?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
         e.bio?.toLowerCase().includes(effectiveSearch.toLowerCase());
-      return matchesCat && matchesCity && matchesRating && matchesVerified && matchesSearch;
+      return matchesCat && matchesCity && matchesRating && matchesVerified && matchesSkill && matchesSearch;
     })
     .sort((a, b) => {
       if (sortBy === "rating_desc") return Number(b.average_rating || 4.9) - Number(a.average_rating || 4.9);
-      if (sortBy === "experience") return Number(b.experience_years || 0) - Number(a.experience_years || 0);
       return 0;
     });
 
-  const hasActiveFilters = Boolean(selectedCategory || selectedCity || selectedMinRating || verifiedOnly || sortBy !== "recommended" || effectiveSearch);
+  const hasActiveFilters = Boolean(
+    selectedCategory || selectedCity || selectedSkill || minPrice || maxPrice ||
+    selectedMinRating || verifiedOnly || sortBy !== "recommended" || effectiveSearch
+  );
 
   const resetAllFilters = () => {
     setSelectedCategory(null);
     setSelectedCity("");
+    setSelectedSkill("");
+    setMinPrice("");
+    setMaxPrice("");
     setSelectedMinRating("");
     setVerifiedOnly(false);
     setSortBy("recommended");
@@ -214,23 +239,32 @@ export default function Marketplace({
 
           {/* POPULAR QUICK CATEGORY PILLS */}
           <div className="hero-quick-pills">
-            <span className="pills-label">Popular Crafts:</span>
+            <span className="pills-label">Popular Trades:</span>
             {[
-              { label: "Leather & Boots", catId: 1 },
-              { label: "Pottery & Matkas", catId: 2 },
-              { label: "Tailoring & Blouse", catId: 3 },
-              { label: "AC & Appliance Fix", catId: 4 },
-              { label: "House Shifting", catId: 6 },
-              { label: "Home Painting", catId: 8 }
-            ].map((pill) => (
-              <button
-                key={pill.label}
-                className={`quick-pill ${selectedCategory === String(pill.catId) ? "active" : ""}`}
-                onClick={() => setSelectedCategory(selectedCategory === String(pill.catId) ? null : String(pill.catId))}
-              >
-                {pill.label}
-              </button>
-            ))}
+              { label: "Cobbler / Shoes", match: "Cobbler" },
+              { label: "Potter (Kumhar)", match: "Potter" },
+              { label: "Tailor / Stitching", match: "Tailor" },
+              { label: "Handmade Artisan", match: "Artisan" },
+              { label: "Small Vendor", match: "Small vendor" },
+              { label: "Wood Worker", match: "Wood Worker" }
+            ].map((pill) => {
+              const matchedCat = categories.find(c => c.name.toLowerCase().includes(pill.match.toLowerCase()));
+              const catId = matchedCat ? String(matchedCat.id) : null;
+              const isActive = catId && selectedCategory === catId;
+              return (
+                <button
+                  key={pill.label}
+                  className={`quick-pill ${isActive ? "active" : ""}`}
+                  onClick={() => {
+                    if (catId) {
+                      setSelectedCategory(isActive ? null : catId);
+                    }
+                  }}
+                >
+                  {pill.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -347,6 +381,61 @@ export default function Marketplace({
             </select>
           </div>
 
+          {/* Skill Type Dropdown */}
+          <div className="filter-select-group">
+            <label className="filter-label">Skill Type</label>
+            <select
+              value={selectedSkill}
+              onChange={(e) => setSelectedSkill(e.target.value)}
+              className="filter-select-control"
+            >
+              <option value="">All Skills & Crafts</option>
+              {availableSkills.map((sk) => (
+                <option key={sk.id} value={sk.id}>
+                  {sk.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Price Range Filter */}
+          <div className="filter-select-group">
+            <label className="filter-label">Price Range (₹)</label>
+            <div style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
+              <input
+                type="number"
+                placeholder="Min ₹"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+                style={{
+                  width: "72px",
+                  padding: "0.45rem",
+                  background: "#0f172a",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  borderRadius: "6px",
+                  color: "#fff",
+                  fontSize: "0.82rem"
+                }}
+              />
+              <span style={{ color: "#94a3b8" }}>-</span>
+              <input
+                type="number"
+                placeholder="Max ₹"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+                style={{
+                  width: "72px",
+                  padding: "0.45rem",
+                  background: "#0f172a",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  borderRadius: "6px",
+                  color: "#fff",
+                  fontSize: "0.82rem"
+                }}
+              />
+            </div>
+          </div>
+
           {/* Minimum Rating Dropdown */}
           <div className="filter-select-group">
             <label className="filter-label">Rating Filter</label>
@@ -386,9 +475,7 @@ export default function Marketplace({
             >
               <option value="recommended">Featured / Recommended</option>
               <option value="rating_desc">Highest Rated Experts</option>
-              <option value="experience">Most Experienced</option>
               <option value="price_asc">Price: Low to High</option>
-              <option value="price_desc">Price: High to Low</option>
             </select>
           </div>
         </div>
@@ -540,7 +627,7 @@ export default function Marketplace({
             onGetQuote={(artisan) => onOpenQuoteWizard?.(null, { id: artisan.category_id, name: artisan.business_name })}
           />
         ) : (
-          <div className="catalog-grid-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))' }}>
+          <div className="catalog-grid-4 catalog-grid-experts">
             {filteredEntrepreneurs.map((ep) => (
               <div key={ep.id} className="glass-panel catalog-card sulekha-expert-card">
                 <div className="expert-card-left">

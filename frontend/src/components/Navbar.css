@@ -308,6 +308,16 @@
 }
 
 /* Responsive Media Queries */
+@media (max-width: 1240px) {
+  .navbar-search {
+    max-width: 18rem;
+  }
+  .navbar-inner {
+    padding: 0 1.25rem;
+    gap: 1rem;
+  }
+}
+
 @media (max-width: 1024px) {
   .navbar-search { display: none; }
   .desktop-only-nav { display: none; }

@@ -1,7 +1,6 @@
 /* Entrepreneur Portal Component Styles */
 .entrepreneur-portal-container {
   display: flex;
-  flex-direction: flex-col;
   flex-direction: column;
   gap: 1.5rem;
   padding-bottom: 5rem;

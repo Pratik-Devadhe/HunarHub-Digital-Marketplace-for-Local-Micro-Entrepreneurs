@@ -156,7 +156,7 @@ export default function Navbar({
 
           {/* Cart Button */}
           <button
-            onClick={() => handleNavClick("/cart")}
+            onClick={onOpenCart || (() => handleNavClick("/cart"))}
             className={`cart-icon-btn ${isCurrent("/cart") ? "active" : ""}`}
             title="View Shopping Cart"
           >

@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import { X, Star, Send } from "lucide-react";
 
 export default function ReviewModal({ isOpen, onClose, targetItem, onSubmitReview, showToast }) {
-  if (!isOpen || !targetItem) return null;
-
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
+
+  if (!isOpen || !targetItem) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
