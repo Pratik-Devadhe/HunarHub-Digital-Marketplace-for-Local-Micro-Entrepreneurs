@@ -7,7 +7,8 @@ const router = express.Router();
 /* Routes are mounted from app.js without /api. */
 // POST create-order
 router.post("/create-order", authenticateUser, createPaymentOrder);
-// PUT verify
+// POST & PUT verify
+router.post("/verify", authenticateUser, verifyPayment);
 router.put("/verify", authenticateUser, verifyPayment);
 // GET :id
 router.get("/:id", authenticateUser, getPaymentById);

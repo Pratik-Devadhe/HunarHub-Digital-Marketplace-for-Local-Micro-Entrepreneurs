@@ -1,5 +1,6 @@
 const { withTransaction } = require("../utils/transaction");
 const { httpError, sendError, id } = require("../utils/http");
+const { normalizePhone } = require("../utils/phone");
 
 const profileByUser = async (c, userId) => {
   const r = await c.query("SELECT * FROM entrepreneur_profiles WHERE user_id=$1", [userId]);
@@ -166,10 +167,11 @@ const getEntrepreneurById = async (req, res) => {
 
       const entrepreneur = r.rows[0];
 
-      // Fetch services, products, reviews, availability (portfolio_items table does not exist)
-      const [services, products, reviews, availability] = await Promise.all([
+      // Fetch services, products, portfolio items, reviews, availability, skills
+      const [services, products, portfolio, reviews, availability, skills] = await Promise.all([
         c.query("SELECT * FROM services WHERE entrepreneur_id = $1 AND is_active = true ORDER BY created_at DESC", [entrepreneurId]),
         c.query("SELECT * FROM products WHERE entrepreneur_id = $1 AND is_available = true ORDER BY created_at DESC", [entrepreneurId]),
+        c.query("SELECT * FROM portfolio_items WHERE entrepreneur_id = $1 ORDER BY created_at DESC", [entrepreneurId]),
         c.query(
           `SELECT rev.*, u.full_name as customer_name, u.profile_image as customer_image
            FROM reviews rev
@@ -178,16 +180,26 @@ const getEntrepreneurById = async (req, res) => {
            ORDER BY rev.created_at DESC`,
           [entrepreneurId]
         ),
-        c.query("SELECT * FROM entrepreneur_availability WHERE entrepreneur_id = $1 ORDER BY day_of_week ASC", [entrepreneurId])
+        c.query("SELECT * FROM entrepreneur_availability WHERE entrepreneur_id = $1 ORDER BY day_of_week ASC", [entrepreneurId]),
+        c.query(
+          `SELECT s.id, s.name, s.description, s.category_id, c.name as category_name
+           FROM entrepreneur_skills es
+           JOIN skills s ON s.id = es.skill_id
+           JOIN categories c ON c.id = s.category_id
+           WHERE es.entrepreneur_id = $1
+           ORDER BY s.name`,
+          [entrepreneurId]
+        )
       ]);
 
       return {
         ...entrepreneur,
         services: services.rows,
         products: products.rows,
-        portfolio: [],
+        portfolio: portfolio.rows,
         reviews: reviews.rows,
-        availability: availability.rows
+        availability: availability.rows,
+        skills: skills.rows
       };
     });
 
@@ -200,6 +212,7 @@ const getEntrepreneurById = async (req, res) => {
 const createProfile = async (req, res) => {
   try {
     const { business_name, bio, experience_years, phone, address, city, state, pincode, latitude, longitude } = req.body;
+    const normalizedPhone = phone ? normalizePhone(phone, false) : null;
 
     const data = await withTransaction(async (c) => {
       // Ensure user role is updated to ENTREPRENEUR in users table
@@ -230,7 +243,7 @@ const createProfile = async (req, res) => {
             business_name || null,
             bio || null,
             experience_years ? parseInt(experience_years) : 0,
-            phone || null,
+            normalizedPhone,
             address || null,
             city || null,
             state || null,
@@ -254,7 +267,7 @@ const createProfile = async (req, res) => {
             business_name || null,
             bio || null,
             experience_years ? parseInt(experience_years) : 0,
-            phone || null,
+            normalizedPhone,
             address || null,
             city || null,
             state || null,
@@ -289,6 +302,7 @@ const updateProfile = async (req, res) => {
       latitude,
       longitude
     } = req.body;
+    const normalizedPhone = phone !== undefined ? (phone ? normalizePhone(phone, false) : null) : undefined;
 
     const data = await withTransaction(async (c) => {
       const ep = await profileByUser(c, req.user.id);
@@ -311,7 +325,7 @@ const updateProfile = async (req, res) => {
           business_name ?? null,
           bio ?? null,
           experience_years ?? null,
-          phone ?? null,
+          normalizedPhone ?? null,
           address ?? null,
           city ?? null,
           state ?? null,
@@ -394,14 +408,53 @@ const getEntrepreneurDashboard = async (req, res) => {
   try {
     const data = await withTransaction(async (c) => {
       const ep = await profileByUser(c, req.user.id);
-      const [services, products, requests, orders, earnings, reviews] = await Promise.all([
+      const [
+        services,
+        products,
+        requests,
+        quotes,
+        orders,
+        prodEarnings,
+        svcEarnings,
+        completedSvc,
+        completedOrd,
+        reviews,
+        portfolio,
+        recentTx
+      ] = await Promise.all([
         c.query("SELECT COUNT(*)::int count FROM services WHERE entrepreneur_id = $1 AND is_active = true", [ep.id]),
         c.query("SELECT COUNT(*)::int count FROM products WHERE entrepreneur_id = $1 AND is_available = true", [ep.id]),
-        c.query("SELECT COUNT(*)::int count FROM service_requests WHERE entrepreneur_id = $1 AND status = 'PENDING'", [ep.id]),
+        c.query("SELECT COUNT(*)::int count FROM service_requests WHERE entrepreneur_id = $1 AND status IN ('PENDING', 'REQUESTED', 'QUOTED')", [ep.id]),
+        c.query("SELECT COUNT(*)::int count FROM quotes WHERE entrepreneur_id = $1 AND status = 'PENDING'", [ep.id]),
         c.query("SELECT COUNT(DISTINCT oi.order_id)::int count FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE oi.entrepreneur_id = $1 AND o.status NOT IN ('CANCELLED')", [ep.id]),
         c.query("SELECT COALESCE(SUM(oi.subtotal), 0)::numeric earnings FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE oi.entrepreneur_id = $1 AND o.status = 'COMPLETED'", [ep.id]),
-        c.query("SELECT COUNT(*)::int count FROM reviews WHERE entrepreneur_id = $1", [ep.id])
+        c.query("SELECT COALESCE(SUM(COALESCE(final_price, estimated_price, 0)), 0)::numeric earnings FROM service_requests WHERE entrepreneur_id = $1 AND status = 'COMPLETED'", [ep.id]),
+        c.query("SELECT COUNT(*)::int count FROM service_requests WHERE entrepreneur_id = $1 AND status = 'COMPLETED'", [ep.id]),
+        c.query("SELECT COUNT(DISTINCT oi.order_id)::int count FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE oi.entrepreneur_id = $1 AND o.status = 'COMPLETED'", [ep.id]),
+        c.query("SELECT COUNT(*)::int count FROM reviews WHERE entrepreneur_id = $1", [ep.id]),
+        c.query("SELECT COUNT(*)::int count FROM portfolio_items WHERE entrepreneur_id = $1", [ep.id]),
+        c.query(
+          `(SELECT 'SERVICE' as type, sr.id, sr.title, COALESCE(sr.final_price, sr.estimated_price, 0) as amount,
+                   sr.updated_at as date, u.full_name as customer_name
+            FROM service_requests sr
+            JOIN users u ON u.id = sr.customer_id
+            WHERE sr.entrepreneur_id = $1 AND sr.status = 'COMPLETED')
+           UNION ALL
+           (SELECT 'PRODUCT' as type, o.id, p.name as title, oi.subtotal as amount,
+                   o.updated_at as date, u.full_name as customer_name
+            FROM order_items oi
+            JOIN orders o ON o.id = oi.order_id
+            JOIN products p ON p.id = oi.product_id
+            JOIN users u ON u.id = o.customer_id
+            WHERE oi.entrepreneur_id = $1 AND o.status = 'COMPLETED')
+           ORDER BY date DESC LIMIT 15`,
+          [ep.id]
+        )
       ]);
+
+      const productEarnings = Number(prodEarnings.rows[0]?.earnings || 0);
+      const serviceEarnings = Number(svcEarnings.rows[0]?.earnings || 0);
+      const totalEarnings = productEarnings + serviceEarnings;
 
       return {
         entrepreneur: ep,
@@ -409,12 +462,17 @@ const getEntrepreneurDashboard = async (req, res) => {
           services: services.rows[0].count,
           products: products.rows[0].count,
           pending_requests: requests.rows[0].count,
-          pending_quotes: 0,
+          pending_quotes: quotes.rows[0].count,
           orders: orders.rows[0].count,
-          earnings: earnings.rows[0].earnings,
-          portfolio_items: 0,
+          earnings: totalEarnings,
+          product_earnings: productEarnings,
+          service_earnings: serviceEarnings,
+          completed_bookings: completedSvc.rows[0].count,
+          completed_orders: completedOrd.rows[0].count,
+          portfolio_items: portfolio.rows[0].count,
           total_reviews: reviews.rows[0].count
-        }
+        },
+        recent_transactions: recentTx.rows
       };
     });
     res.json({ success: true, dashboard: data });
@@ -441,6 +499,98 @@ const getMyProfile = async (req, res) => {
   }
 };
 
+const getMySkills = async (req, res) => {
+  try {
+    const rows = await withTransaction(async (c) => {
+      const ep = await profileByUser(c, req.user.id);
+      const r = await c.query(
+        `SELECT s.id, s.name, s.description, s.category_id, c.name as category_name
+         FROM entrepreneur_skills es
+         JOIN skills s ON s.id = es.skill_id
+         JOIN categories c ON c.id = s.category_id
+         WHERE es.entrepreneur_id = $1
+         ORDER BY s.name`,
+        [ep.id]
+      );
+      return r.rows;
+    });
+    res.json({ success: true, skills: rows });
+  } catch (e) {
+    sendError(res, e);
+  }
+};
+
+const addSkillToProfile = async (req, res) => {
+  try {
+    const { skill_id } = req.body;
+    if (!skill_id) throw httpError("skill_id is required", 400);
+
+    const data = await withTransaction(async (c) => {
+      const ep = await profileByUser(c, req.user.id);
+      const skillCheck = await c.query(
+        `SELECT s.*, c.name as category_name
+         FROM skills s
+         JOIN categories c ON c.id = s.category_id
+         WHERE s.id = $1`,
+        [id(skill_id, "skill id")]
+      );
+      if (!skillCheck.rowCount) throw httpError("Skill not found", 404);
+
+      await c.query(
+        `INSERT INTO entrepreneur_skills (entrepreneur_id, skill_id)
+         VALUES ($1, $2)
+         ON CONFLICT (entrepreneur_id, skill_id) DO NOTHING`,
+        [ep.id, skillCheck.rows[0].id]
+      );
+
+      return skillCheck.rows[0];
+    });
+
+    res.status(201).json({ success: true, skill: data });
+  } catch (e) {
+    sendError(res, e);
+  }
+};
+
+const removeSkillFromProfile = async (req, res) => {
+  try {
+    const skillId = id(req.params.skillId, "skill id");
+    await withTransaction(async (c) => {
+      const ep = await profileByUser(c, req.user.id);
+      await c.query(
+        "DELETE FROM entrepreneur_skills WHERE entrepreneur_id = $1 AND skill_id = $2",
+        [ep.id, skillId]
+      );
+    });
+    res.json({ success: true, message: "Skill removed from profile" });
+  } catch (e) {
+    sendError(res, e);
+  }
+};
+
+const getMyReviews = async (req, res) => {
+  try {
+    const rows = await withTransaction(async (c) => {
+      const ep = await profileByUser(c, req.user.id);
+      const r = await c.query(
+        `SELECT rev.*, u.full_name as customer_name, u.profile_image as customer_image,
+                p.name as product_name, sr.title as service_title
+         FROM reviews rev
+         JOIN users u ON u.id = rev.customer_id
+         LEFT JOIN products p ON p.id = rev.product_id
+         LEFT JOIN service_requests sr ON sr.id = rev.service_request_id
+         WHERE rev.entrepreneur_id = $1
+         ORDER BY rev.created_at DESC`,
+        [ep.id]
+      );
+      return r.rows;
+    });
+    res.json({ success: true, reviews: rows });
+  } catch (e) {
+    sendError(res, e);
+  }
+};
+
 module.exports = {
   getEntrepreneurs,
   getNearbyEntrepreneurs,
@@ -452,6 +602,10 @@ module.exports = {
   getEntrepreneurServices,
   getEntrepreneurProducts,
   getEntrepreneurReviews,
-  getEntrepreneurDashboard
+  getEntrepreneurDashboard,
+  getMySkills,
+  addSkillToProfile,
+  removeSkillFromProfile,
+  getMyReviews
 };
 

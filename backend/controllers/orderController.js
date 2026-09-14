@@ -29,18 +29,14 @@ const createOrder = async (req, res) => {
         return { p, q, subtotal };
       });
 
-      const isConfigured = Boolean(
-        process.env.RAZORPAY_KEY_ID &&
-        process.env.RAZORPAY_KEY_SECRET &&
-        !process.env.RAZORPAY_KEY_ID.includes("dummy") &&
-        !process.env.RAZORPAY_KEY_SECRET.includes("dummy")
-      );
-      const initialPaymentStatus = isConfigured ? "PENDING" : "NOT_AVAILABLE";
+      const initialPaymentStatus = "PENDING";
+
+      const primaryEntrepreneurId = prepared.length > 0 ? prepared[0].p.entrepreneur_id : null;
 
       const order = (await c.query(
-        `INSERT INTO orders (customer_id, total_amount, status, payment_status, shipping_address)
-         VALUES ($1, $2, 'PENDING', $3, $4) RETURNING *`,
-        [req.user.id, total, initialPaymentStatus, shipping_address || null]
+        `INSERT INTO orders (customer_id, entrepreneur_id, total_amount, status, payment_status, shipping_address)
+         VALUES ($1, $2, $3, 'PENDING', $4, $5) RETURNING *`,
+        [req.user.id, primaryEntrepreneurId, total, initialPaymentStatus, shipping_address || null]
       )).rows[0];
 
       for (const x of prepared) {
@@ -141,7 +137,7 @@ const getOrderById = async (req, res) => {
       if (!r.rowCount) throw httpError("Order not found", 404);
       const x = r.rows[0];
 
-      const isOwner = req.user.id === x.customer_id;
+      const isOwner = Number(req.user.id) === Number(x.customer_id);
       const isEntrepreneur = await c.query(
         "SELECT 1 FROM order_items oi JOIN entrepreneur_profiles ep ON ep.id = oi.entrepreneur_id WHERE oi.order_id = $1 AND ep.user_id = $2",
         [x.id, req.user.id]

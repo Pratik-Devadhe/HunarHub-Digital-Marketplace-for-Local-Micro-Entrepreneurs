@@ -77,20 +77,37 @@ const rejectEntrepreneur = (req, res) => setVerification(req, res, "REJECTED");
 const updateVerificationBadges = async (req, res) => {
   try {
     const epId = id(req.params.id, "entrepreneur id");
-    const { verification_status = 'APPROVED' } = req.body;
+    const {
+      verification_status,
+      is_identity_verified,
+      is_phone_verified,
+      is_artisan_verified,
+      is_business_verified
+    } = req.body;
 
     const row = await withTransaction(async (c) => {
       const r = await c.query(
         `UPDATE entrepreneur_profiles SET
            verification_status = COALESCE($1, verification_status),
+           is_identity_verified = COALESCE($2, is_identity_verified),
+           is_phone_verified = COALESCE($3, is_phone_verified),
+           is_artisan_verified = COALESCE($4, is_artisan_verified),
+           is_business_verified = COALESCE($5, is_business_verified),
            updated_at = CURRENT_TIMESTAMP
-         WHERE id = $2 RETURNING *`,
-        [verification_status, epId]
+         WHERE id = $6 RETURNING *`,
+        [
+          verification_status ?? null,
+          is_identity_verified ?? null,
+          is_phone_verified ?? null,
+          is_artisan_verified ?? null,
+          is_business_verified ?? null,
+          epId
+        ]
       );
       if (!r.rowCount) throw httpError("Entrepreneur not found", 404);
 
       await c.query(
-        `INSERT INTO notifications (user_id, title, message, type) VALUES ($1, 'Verification Status Updated', 'Your verification status has been updated by admin.', 'ADMIN')`,
+        `INSERT INTO notifications (user_id, title, message, type) VALUES ($1, 'Verification Status Updated', 'Your verification status and badges have been updated by admin.', 'ADMIN')`,
         [r.rows[0].user_id]
       );
       return r.rows[0];

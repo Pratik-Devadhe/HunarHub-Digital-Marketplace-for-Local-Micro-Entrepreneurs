@@ -34,14 +34,14 @@ const createPaymentOrder = async (req, res) => {
       if (order_id) {
         const r = await c.query("SELECT id, total_amount, customer_id, payment_status, status FROM orders WHERE id = $1 FOR UPDATE", [id(order_id, "order id")]);
         if (!r.rowCount) throw httpError("Order not found", 404);
-        if (req.user.role !== "ADMIN" && r.rows[0].customer_id !== req.user.id) throw httpError("Access denied", 403);
+        if (req.user.role !== "ADMIN" && Number(r.rows[0].customer_id) !== Number(req.user.id)) throw httpError("Access denied", 403);
         if (r.rows[0].payment_status === "PAID") throw httpError("Order already paid", 409);
         amount = Number(r.rows[0].total_amount);
         customerId = r.rows[0].customer_id;
       } else {
         const r = await c.query("SELECT id, estimated_price, final_price, customer_id, status FROM service_requests WHERE id = $1 FOR UPDATE", [id(service_request_id, "service request id")]);
         if (!r.rowCount) throw httpError("Service request not found", 404);
-        if (req.user.role !== "ADMIN" && r.rows[0].customer_id !== req.user.id) throw httpError("Access denied", 403);
+        if (req.user.role !== "ADMIN" && Number(r.rows[0].customer_id) !== Number(req.user.id)) throw httpError("Access denied", 403);
         if (!["ACCEPTED", "IN_PROGRESS", "COMPLETED"].includes(r.rows[0].status)) throw httpError("Service request is not payable yet", 409);
         amount = Number(r.rows[0].final_price ?? r.rows[0].estimated_price ?? 0);
         customerId = r.rows[0].customer_id;
@@ -51,12 +51,12 @@ const createPaymentOrder = async (req, res) => {
 
       const razorpay = getRazorpayInstance();
       if (!razorpay) {
-        // Return clear flag indicating online payment is unavailable in demo environment
         return {
           is_configured: false,
           amount,
           customer_id: customerId,
-          message: "Online payment is currently unavailable. You can still continue with your booking."
+          supported_methods: ["DIRECT_UPI", "CASH"],
+          message: "Online gateway unavailable. Settle directly with artisan via UPI or Cash."
         };
       }
 
@@ -83,33 +83,42 @@ const createPaymentOrder = async (req, res) => {
 
 const verifyPayment = async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, order_id, service_request_id } = req.body;
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      payment_method = "ONLINE",
+      order_id,
+      service_request_id
+    } = req.body;
+
+    if (!order_id && !service_request_id) {
+      throw httpError("Provide order_id or service_request_id", 400);
+    }
 
     const razorpay = getRazorpayInstance();
-    if (!razorpay) {
-      // Payment gateway unavailable: handle gracefully without claiming paid or generating fake IDs
-      const paymentResult = await withTransaction(async (c) => {
-        if (order_id) {
-          await c.query("UPDATE orders SET payment_status = 'NOT_AVAILABLE', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [id(order_id)]);
-        }
-        return {
-          payment_status: "NOT_AVAILABLE",
-          message: "Online payment is currently unavailable. Booking/order remains valid."
-        };
-      });
-      return res.json({ success: true, ...paymentResult });
-    }
+    const isDirectPayment =
+      ["DIRECT_UPI", "CASH", "CASH_ON_DELIVERY", "UPI", "DIRECT"].includes(
+        String(payment_method).toUpperCase()
+      ) || !razorpay;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      throw httpError("Payment verification fields (order ID, payment ID, signature) are required", 400);
-    }
+    let finalTransactionId = razorpay_payment_id;
 
-    // Verify HMAC SHA256 signature strictly
-    const expected = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
+    if (!isDirectPayment) {
+      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        throw httpError("Payment verification fields (order ID, payment ID, signature) are required", 400);
+      }
 
-    if (expected !== razorpay_signature) {
-      throw httpError("Invalid payment signature", 400);
+      const expected = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
+
+      if (expected !== razorpay_signature) {
+        throw httpError("Invalid payment signature", 400);
+      }
+    } else {
+      if (!finalTransactionId) {
+        finalTransactionId = `pay_direct_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+      }
     }
 
     const payment = await withTransaction(async (c) => {
@@ -117,25 +126,37 @@ const verifyPayment = async (req, res) => {
       if (order_id) {
         const r = await c.query("SELECT id, total_amount, customer_id FROM orders WHERE id = $1 FOR UPDATE", [id(order_id, "order id")]);
         if (!r.rowCount) throw httpError("Order not found", 404);
-        if (req.user.role !== "ADMIN" && r.rows[0].customer_id !== req.user.id) throw httpError("Access denied", 403);
+        if (req.user.role !== "ADMIN" && Number(r.rows[0].customer_id) !== Number(req.user.id)) throw httpError("Access denied", 403);
         amount = Number(r.rows[0].total_amount);
         customerId = r.rows[0].customer_id;
       } else {
         const r = await c.query("SELECT id, estimated_price, final_price, customer_id FROM service_requests WHERE id = $1 FOR UPDATE", [id(service_request_id, "service request id")]);
         if (!r.rowCount) throw httpError("Service request not found", 404);
-        if (req.user.role !== "ADMIN" && r.rows[0].customer_id !== req.user.id) throw httpError("Access denied", 403);
+        if (req.user.role !== "ADMIN" && Number(r.rows[0].customer_id) !== Number(req.user.id)) throw httpError("Access denied", 403);
         amount = Number(r.rows[0].final_price ?? r.rows[0].estimated_price ?? 0);
         customerId = r.rows[0].customer_id;
       }
 
+      const methodToStore = isDirectPayment ? (payment_method || "DIRECT_UPI") : "RAZORPAY";
+
       const r = await c.query(
         `INSERT INTO payments (order_id, service_request_id, customer_id, amount, payment_method, transaction_id, status, paid_at)
-         VALUES ($1, $2, $3, $4, 'RAZORPAY', $5, 'SUCCESS', CURRENT_TIMESTAMP) RETURNING *`,
-        [order_id || null, service_request_id || null, customerId, amount, razorpay_payment_id]
+         VALUES ($1, $2, $3, $4, $5, $6, 'SUCCESS', CURRENT_TIMESTAMP) RETURNING *`,
+        [order_id || null, service_request_id || null, customerId, amount, methodToStore, finalTransactionId]
       );
 
       if (order_id) {
-        await c.query("UPDATE orders SET payment_status = 'PAID', status = CASE WHEN status = 'PENDING' THEN 'CONFIRMED' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = $1", [order_id]);
+        await c.query(
+          "UPDATE orders SET payment_status = 'PAID', status = CASE WHEN status = 'PENDING' THEN 'CONFIRMED' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+          [order_id]
+        );
+      }
+
+      if (service_request_id) {
+        await c.query(
+          "UPDATE service_requests SET status = CASE WHEN status = 'ACCEPTED' THEN 'IN_PROGRESS' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+          [service_request_id]
+        );
       }
 
       return r.rows[0];
@@ -152,7 +173,7 @@ const getPaymentById = async (req, res) => {
     const row = await withTransaction(async (c) => {
       const r = await c.query("SELECT * FROM payments WHERE id = $1", [id(req.params.id, "payment id")]);
       if (!r.rowCount) throw httpError("Payment not found", 404);
-      if (req.user.role !== "ADMIN" && r.rows[0].customer_id !== req.user.id) throw httpError("Access denied", 403);
+      if (req.user.role !== "ADMIN" && Number(r.rows[0].customer_id) !== Number(req.user.id)) throw httpError("Access denied", 403);
       return r.rows[0];
     });
     res.json({ success: true, payment: row });

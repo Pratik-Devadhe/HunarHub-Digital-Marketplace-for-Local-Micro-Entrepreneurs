@@ -17,6 +17,10 @@ const getProducts = async (req, res) => {
       w.push(`p.entrepreneur_id = $${n++}`);
       vals.push(id(req.query.entrepreneur_id, "entrepreneur id"));
     }
+    if (req.query.city && req.query.city.trim()) {
+      w.push(`LOWER(ep.city) = LOWER($${n++})`);
+      vals.push(req.query.city.trim());
+    }
     if (req.query.min_price) {
       w.push(`p.price >= $${n++}`);
       vals.push(Number(req.query.min_price));
@@ -26,7 +30,7 @@ const getProducts = async (req, res) => {
       vals.push(Number(req.query.max_price));
     }
     if (req.query.search) {
-      w.push(`(p.name ILIKE $${n} OR p.description ILIKE $${n})`);
+      w.push(`(p.name ILIKE $${n} OR p.description ILIKE $${n} OR ep.business_name ILIKE $${n} OR c.name ILIKE $${n})`);
       vals.push(`%${req.query.search}%`);
       n++;
     }
@@ -37,21 +41,25 @@ const getProducts = async (req, res) => {
 
     const data = await withTransaction(async (c) => {
       const countRes = await c.query(
-        `SELECT COUNT(*)::int as total FROM products p WHERE ${w.join(" AND ")}`,
+        `SELECT COUNT(*)::int as total FROM products p
+         JOIN entrepreneur_profiles ep ON ep.id = p.entrepreneur_id
+         LEFT JOIN categories c ON c.id = p.category_id
+         WHERE ${w.join(" AND ")}`,
         vals
       );
       const total = countRes.rows[0]?.total || 0;
 
       const productsRes = await c.query(
-        `SELECT p.*, ep.business_name, u.full_name,
+        `SELECT p.*, ep.business_name, ep.city, ep.average_rating, u.full_name, c.name as category_name,
          COALESCE(json_agg(json_build_object('id', pi.id, 'image_url', pi.image_url, 'is_primary', pi.is_primary))
          FILTER(WHERE pi.id IS NOT NULL), '[]') images
          FROM products p
          JOIN entrepreneur_profiles ep ON ep.id = p.entrepreneur_id
          JOIN users u ON u.id = ep.user_id
+         LEFT JOIN categories c ON c.id = p.category_id
          LEFT JOIN product_images pi ON pi.product_id = p.id
          WHERE ${w.join(" AND ")}
-         GROUP BY p.id, ep.business_name, u.full_name
+         GROUP BY p.id, ep.business_name, ep.city, ep.average_rating, u.full_name, c.name
          ORDER BY p.created_at DESC
          LIMIT $${n} OFFSET $${n + 1}`,
         [...vals, limit, offset]

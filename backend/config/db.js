@@ -1,4 +1,14 @@
 const path = require('path');
+const dns = require('dns');
+const net = require('net');
+
+if (net.setDefaultAutoSelectFamily) {
+    net.setDefaultAutoSelectFamily(false);
+}
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
+
 require("dotenv").config({ path: path.resolve(__dirname, '.env') });
 require("dotenv").config({ path: path.resolve(__dirname, '../.env') });
 const { Pool } = require("pg");

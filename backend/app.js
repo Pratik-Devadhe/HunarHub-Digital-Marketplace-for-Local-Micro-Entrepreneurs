@@ -5,11 +5,33 @@ const port = process.env.PORT || 5000;
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+  "https://hunarhub-frontend-seven.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:8080",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:3000"
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (such as mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || /^https:\/\/hunarhub-frontend.*\.vercel\.app$/.test(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get("/", (req,res)=>res.json({success:true,message:"Welcome to HunarHub API"}));
+app.get("/", (req, res) => res.json({ success: true, message: "Welcome to HunarHub API" }));
 
 const apiRouter = express.Router();
 apiRouter.use("/health", require("./routes/healthRoutes"));
@@ -44,12 +66,15 @@ app.use((err, req, res, next) => {
   const status = err.status || err.statusCode || 500;
   res.status(status).json({
     success: false,
-    message: err.message || "Internal server error"
+    message: err.message || "Internal server error",
+    error: err.message || "Internal server error"
   });
 });
 
-app.listen(port, () => {
-    console.log(`Hunarhub Backend server running on port ${port}`);
-});
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`HunarHub Backend server running on port ${port}`);
+  });
+}
 
-module.exports=app;
+module.exports = app;

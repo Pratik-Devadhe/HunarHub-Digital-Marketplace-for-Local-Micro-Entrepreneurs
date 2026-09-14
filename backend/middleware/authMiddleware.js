@@ -9,7 +9,8 @@ const authenticateUser = (req, res, next) => {
             return res.status(401).json({ success: false, message: "Authentication required" });
         }
 
-        req.user = jwt.verify(token, process.env.JWT_SECRET);
+        const secret = process.env.JWT_SECRET || "hunarhub_super_secret_jwt_key_development_2026";
+        req.user = jwt.verify(token, secret);
         next();
     } catch (error) {
         return res.status(401).json({ success: false, message: "Invalid or expired token" });

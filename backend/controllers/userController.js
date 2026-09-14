@@ -9,7 +9,7 @@ const getUser = async (req,res) => {
                  FROM users WHERE id=$1`, [id(req.params.id)]
             );
             if (!r.rowCount) throw httpError("User not found",404);
-            if (req.user.role !== "ADMIN" && req.user.id !== r.rows[0].id) throw httpError("Access denied",403);
+            if (req.user.role !== "ADMIN" && Number(req.user.id) !== Number(r.rows[0].id)) throw httpError("Access denied",403);
             return r.rows[0];
         });
         res.json({success:true,user});
@@ -38,7 +38,7 @@ const updateUser = async (req,res) => {
 const deleteUser = async (req,res) => {
     try {
         const target=id(req.params.id);
-        if(req.user.role!=="ADMIN" && req.user.id!==target) throw httpError("Access denied",403);
+        if(req.user.role!=="ADMIN" && Number(req.user.id)!==Number(target)) throw httpError("Access denied",403);
         await withTransaction(async client => {
             const r=await client.query("DELETE FROM users WHERE id=$1 RETURNING id",[target]);
             if(!r.rowCount) throw httpError("User not found",404);

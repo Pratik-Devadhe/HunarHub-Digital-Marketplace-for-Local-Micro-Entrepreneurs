@@ -9,13 +9,13 @@ const createComplaint=async(req,res)=>{try{
   if(order_id){
    const r=await c.query("SELECT o.id, o.customer_id, oi.entrepreneur_id FROM orders o JOIN order_items oi ON oi.order_id = o.id WHERE o.id=$1 LIMIT 1",[id(order_id, "order id")]);
    if(!r.rowCount)throw httpError("Order not found",404);
-   if(req.user.role!=="ADMIN"&&r.rows[0].customer_id!==req.user.id&&req.user.role!=="ENTREPRENEUR")throw httpError("Access denied",403);
+   if(req.user.role!=="ADMIN"&&Number(r.rows[0].customer_id)!==Number(req.user.id)&&req.user.role!=="ENTREPRENEUR")throw httpError("Access denied",403);
    if(!targetEntrepreneurId) targetEntrepreneurId = r.rows[0].entrepreneur_id;
   }
   if(service_request_id){
    const r=await c.query("SELECT id,customer_id,entrepreneur_id FROM service_requests WHERE id=$1",[id(service_request_id, "service request id")]);
    if(!r.rowCount)throw httpError("Service request not found",404);
-   if(req.user.role!=="ADMIN"&&r.rows[0].customer_id!==req.user.id)throw httpError("Access denied",403);
+   if(req.user.role!=="ADMIN"&&Number(r.rows[0].customer_id)!==Number(req.user.id))throw httpError("Access denied",403);
    if(!targetEntrepreneurId) targetEntrepreneurId = r.rows[0].entrepreneur_id;
   }
   return (await c.query(
@@ -34,7 +34,16 @@ const getMyComplaints=async(req,res)=>{try{
 }catch(e){sendError(res,e)}};
 
 const getComplaintById=async(req,res)=>{try{
- const row=await withTransaction(async c=>{const r=await c.query("SELECT * FROM complaints WHERE id=$1",[id(req.params.id)]);if(!r.rowCount)throw httpError("Complaint not found",404);return r.rows[0]});
+ const row=await withTransaction(async c=>{
+  const r=await c.query("SELECT * FROM complaints WHERE id=$1",[id(req.params.id)]);
+  if(!r.rowCount)throw httpError("Complaint not found",404);
+  const item = r.rows[0];
+  if (req.user.role !== "ADMIN" && Number(item.customer_id) !== Number(req.user.id)) {
+   const ep = await c.query("SELECT 1 FROM entrepreneur_profiles WHERE id = $1 AND user_id = $2", [item.entrepreneur_id, req.user.id]);
+   if (!ep.rowCount) throw httpError("Access denied", 403);
+  }
+  return item;
+ });
  res.json({success:true,complaint:row});
 }catch(e){sendError(res,e)}};
 

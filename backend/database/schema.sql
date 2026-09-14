@@ -101,6 +101,20 @@ CREATE TABLE IF NOT EXISTS entrepreneur_profiles (
 
     is_available BOOLEAN NOT NULL DEFAULT TRUE,
 
+    is_identity_verified BOOLEAN DEFAULT FALSE,
+
+    is_phone_verified BOOLEAN DEFAULT TRUE,
+
+    is_artisan_verified BOOLEAN DEFAULT FALSE,
+
+    is_business_verified BOOLEAN DEFAULT FALSE,
+
+    profile_views INTEGER DEFAULT 0,
+
+    starting_price NUMERIC(10,2) DEFAULT 250.00,
+
+    unavailable_dates TEXT[] DEFAULT '{}',
+
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -173,6 +187,39 @@ CREATE TABLE IF NOT EXISTS entrepreneur_skills (
         FOREIGN KEY (skill_id)
         REFERENCES skills(id)
         ON DELETE CASCADE
+);
+
+
+-- ============================================================
+-- 6B. PORTFOLIO ITEMS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS portfolio_items (
+    id BIGSERIAL PRIMARY KEY,
+
+    entrepreneur_id BIGINT NOT NULL,
+
+    title VARCHAR(150) NOT NULL,
+
+    description TEXT,
+
+    image_url TEXT,
+
+    category_id BIGINT,
+
+    price NUMERIC(10,2),
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT portfolio_entrepreneur_fk
+        FOREIGN KEY (entrepreneur_id)
+        REFERENCES entrepreneur_profiles(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT portfolio_category_fk
+        FOREIGN KEY (category_id)
+        REFERENCES categories(id)
+        ON DELETE SET NULL
 );
 
 
@@ -256,6 +303,8 @@ CREATE TABLE IF NOT EXISTS products (
     stock_quantity INTEGER NOT NULL DEFAULT 0,
 
     is_available BOOLEAN NOT NULL DEFAULT TRUE,
+
+    is_handmade BOOLEAN DEFAULT TRUE,
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -344,11 +393,25 @@ CREATE TABLE IF NOT EXISTS service_requests (
 
     customer_id BIGINT NOT NULL,
 
-    entrepreneur_id BIGINT NOT NULL,
+    entrepreneur_id BIGINT,
 
-    service_id BIGINT NOT NULL,
+    service_id BIGINT,
+
+    category_id BIGINT,
+
+    title VARCHAR(150),
 
     description TEXT,
+
+    reference_image TEXT,
+
+    budget_min NUMERIC(10,2),
+
+    budget_max NUMERIC(10,2),
+
+    location_address TEXT,
+
+    city VARCHAR(100),
 
     requested_date DATE,
 
@@ -385,15 +448,23 @@ CREATE TABLE IF NOT EXISTS service_requests (
         REFERENCES services(id)
         ON DELETE CASCADE,
 
+    CONSTRAINT request_category_fk
+        FOREIGN KEY (category_id)
+        REFERENCES categories(id)
+        ON DELETE SET NULL,
+
     CONSTRAINT request_status_check
         CHECK (
             status IN (
+                'REQUESTED',
                 'PENDING',
+                'QUOTED',
                 'ACCEPTED',
-                'REJECTED',
+                'CONFIRMED',
                 'IN_PROGRESS',
                 'COMPLETED',
-                'CANCELLED'
+                'CANCELLED',
+                'REJECTED'
             )
         ),
 
@@ -410,6 +481,103 @@ CREATE TABLE IF NOT EXISTS service_requests (
 
 
 -- ============================================================
+-- 11B. QUOTES
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS quotes (
+    id BIGSERIAL PRIMARY KEY,
+
+    service_request_id BIGINT NOT NULL,
+
+    entrepreneur_id BIGINT NOT NULL,
+
+    proposed_price NUMERIC(10,2) NOT NULL,
+
+    estimated_completion VARCHAR(100),
+
+    message TEXT,
+
+    materials_included TEXT,
+
+    additional_requirements TEXT,
+
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT quote_request_fk
+        FOREIGN KEY (service_request_id)
+        REFERENCES service_requests(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT quote_entrepreneur_fk
+        FOREIGN KEY (entrepreneur_id)
+        REFERENCES entrepreneur_profiles(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT unique_quote_per_entrepreneur
+        UNIQUE (service_request_id, entrepreneur_id),
+
+    CONSTRAINT quote_status_check
+        CHECK (
+            status IN (
+                'PENDING',
+                'ACCEPTED',
+                'REJECTED',
+                'CHANGES_REQUESTED'
+            )
+        )
+);
+
+
+-- ============================================================
+-- 11C. MESSAGES
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS messages (
+    id BIGSERIAL PRIMARY KEY,
+
+    sender_id BIGINT NOT NULL,
+
+    receiver_id BIGINT NOT NULL,
+
+    service_request_id BIGINT,
+
+    order_id BIGINT,
+
+    message_text TEXT NOT NULL,
+
+    image_url TEXT,
+
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT message_sender_fk
+        FOREIGN KEY (sender_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT message_receiver_fk
+        FOREIGN KEY (receiver_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT message_service_request_fk
+        FOREIGN KEY (service_request_id)
+        REFERENCES service_requests(id)
+        ON DELETE SET NULL,
+
+    CONSTRAINT message_order_fk
+        FOREIGN KEY (order_id)
+        REFERENCES orders(id)
+        ON DELETE SET NULL
+);
+
+
+-- ============================================================
 -- 12. ORDERS
 -- ============================================================
 
@@ -417,6 +585,8 @@ CREATE TABLE IF NOT EXISTS orders (
     id BIGSERIAL PRIMARY KEY,
 
     customer_id BIGINT NOT NULL,
+
+    entrepreneur_id BIGINT,
 
     total_amount NUMERIC(10,2) NOT NULL,
 
@@ -435,6 +605,11 @@ CREATE TABLE IF NOT EXISTS orders (
         REFERENCES users(id)
         ON DELETE CASCADE,
 
+    CONSTRAINT order_entrepreneur_fk
+        FOREIGN KEY (entrepreneur_id)
+        REFERENCES entrepreneur_profiles(id)
+        ON DELETE RESTRICT,
+
     CONSTRAINT order_amount_check
         CHECK (total_amount >= 0),
 
@@ -442,9 +617,12 @@ CREATE TABLE IF NOT EXISTS orders (
         CHECK (
             status IN (
                 'PENDING',
+                'ACCEPTED',
                 'CONFIRMED',
                 'PROCESSING',
                 'READY',
+                'SHIPPED',
+                'DELIVERED',
                 'COMPLETED',
                 'CANCELLED'
             )
@@ -453,6 +631,7 @@ CREATE TABLE IF NOT EXISTS orders (
     CONSTRAINT order_payment_status_check
         CHECK (
             payment_status IN (
+                'NOT_AVAILABLE',
                 'PENDING',
                 'PAID',
                 'FAILED',
@@ -481,6 +660,8 @@ CREATE TABLE IF NOT EXISTS order_items (
 
     subtotal NUMERIC(10,2) NOT NULL,
 
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+
     CONSTRAINT order_item_order_fk
         FOREIGN KEY (order_id)
         REFERENCES orders(id)
@@ -501,7 +682,19 @@ CREATE TABLE IF NOT EXISTS order_items (
         CHECK (unit_price >= 0),
 
     CONSTRAINT order_item_subtotal_check
-        CHECK (subtotal >= 0)
+        CHECK (subtotal >= 0),
+
+    CONSTRAINT order_item_status_check
+        CHECK (
+            status IN (
+                'PENDING',
+                'CONFIRMED',
+                'PROCESSING',
+                'READY',
+                'COMPLETED',
+                'CANCELLED'
+            )
+        )
 );
 
 
@@ -585,6 +778,16 @@ CREATE TABLE IF NOT EXISTS reviews (
 
     comment TEXT,
 
+    quality_rating INTEGER CHECK (quality_rating BETWEEN 1 AND 5),
+
+    communication_rating INTEGER CHECK (communication_rating BETWEEN 1 AND 5),
+
+    timeliness_rating INTEGER CHECK (timeliness_rating BETWEEN 1 AND 5),
+
+    value_rating INTEGER CHECK (value_rating BETWEEN 1 AND 5),
+
+    is_verified_order BOOLEAN DEFAULT TRUE,
+
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT review_customer_fk
@@ -627,6 +830,8 @@ CREATE TABLE IF NOT EXISTS favorites (
 
     product_id BIGINT,
 
+    service_id BIGINT,
+
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT favorite_user_fk
@@ -644,10 +849,16 @@ CREATE TABLE IF NOT EXISTS favorites (
         REFERENCES products(id)
         ON DELETE CASCADE,
 
+    CONSTRAINT favorite_service_fk
+        FOREIGN KEY (service_id)
+        REFERENCES services(id)
+        ON DELETE CASCADE,
+
     CONSTRAINT favorite_target_check
         CHECK (
             entrepreneur_id IS NOT NULL
             OR product_id IS NOT NULL
+            OR service_id IS NOT NULL
         )
 );
 
@@ -780,6 +991,21 @@ ON service_requests(status);
 
 CREATE INDEX IF NOT EXISTS idx_notifications_user
 ON notifications(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_messages_participants
+ON messages(sender_id, receiver_id);
+
+CREATE INDEX IF NOT EXISTS idx_quotes_request
+ON quotes(service_request_id);
+
+CREATE INDEX IF NOT EXISTS idx_portfolio_entrepreneur
+ON portfolio_items(entrepreneur_id);
+
+CREATE INDEX IF NOT EXISTS idx_orders_entrepreneur
+ON orders(entrepreneur_id);
+
+CREATE INDEX IF NOT EXISTS idx_order_items_status
+ON order_items(status);
 
 
 -- ============================================================

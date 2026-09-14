@@ -11,12 +11,29 @@ const getServices = async (req, res) => {
       w.push(`s.category_id = $${n++}`);
       vals.push(id(req.query.category_id, "category id"));
     }
+    if (req.query.skill_id) {
+      w.push(`(s.skill_id = $${n} OR EXISTS(SELECT 1 FROM entrepreneur_skills es WHERE es.entrepreneur_id = s.entrepreneur_id AND es.skill_id = $${n}))`);
+      vals.push(id(req.query.skill_id, "skill id"));
+      n++;
+    }
     if (req.query.entrepreneur_id) {
       w.push(`s.entrepreneur_id = $${n++}`);
       vals.push(id(req.query.entrepreneur_id, "entrepreneur id"));
     }
+    if (req.query.city && req.query.city.trim()) {
+      w.push(`LOWER(ep.city) = LOWER($${n++})`);
+      vals.push(req.query.city.trim());
+    }
+    if (req.query.min_price && !isNaN(Number(req.query.min_price))) {
+      w.push(`s.price >= $${n++}`);
+      vals.push(Number(req.query.min_price));
+    }
+    if (req.query.max_price && !isNaN(Number(req.query.max_price))) {
+      w.push(`s.price <= $${n++}`);
+      vals.push(Number(req.query.max_price));
+    }
     if (req.query.search) {
-      w.push(`(s.title ILIKE $${n} OR s.description ILIKE $${n})`);
+      w.push(`(s.title ILIKE $${n} OR s.description ILIKE $${n} OR ep.business_name ILIKE $${n} OR c.name ILIKE $${n})`);
       vals.push(`%${req.query.search}%`);
       n++;
     }
@@ -27,15 +44,23 @@ const getServices = async (req, res) => {
 
     const data = await withTransaction(async (c) => {
       const countRes = await c.query(
-        `SELECT COUNT(*)::int as total FROM services s WHERE ${w.join(" AND ")}`,
+        `SELECT COUNT(*)::int as total FROM services s
+         JOIN entrepreneur_profiles ep ON ep.id = s.entrepreneur_id
+         LEFT JOIN categories c ON c.id = s.category_id
+         LEFT JOIN skills sk ON sk.id = s.skill_id
+         WHERE ${w.join(" AND ")}`,
         vals
       );
       const total = countRes.rows[0]?.total || 0;
 
       const servicesRes = await c.query(
-        `SELECT s.*, ep.business_name, u.full_name FROM services s
+        `SELECT s.*, ep.business_name, ep.city, ep.average_rating, ep.total_reviews, u.full_name,
+                c.name as category_name, sk.name as skill_name
+         FROM services s
          JOIN entrepreneur_profiles ep ON ep.id = s.entrepreneur_id
          JOIN users u ON u.id = ep.user_id
+         LEFT JOIN categories c ON c.id = s.category_id
+         LEFT JOIN skills sk ON sk.id = s.skill_id
          WHERE ${w.join(" AND ")} ORDER BY s.created_at DESC
          LIMIT $${n} OFFSET $${n + 1}`,
         [...vals, limit, offset]
