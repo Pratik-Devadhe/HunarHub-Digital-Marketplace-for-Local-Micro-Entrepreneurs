@@ -55,10 +55,10 @@ export default function Navbar({
             </div>
             <div>
               <span className="brand-text-title">
-                HunarHub <span className="sulekha-tag">Artisan Platform</span>
+                HunarHub <span className="sulekha-tag">HunarSetu</span>
               </span>
               <span className="brand-text-sub">
-                Local Micro-Entrepreneurs & Verified Crafts
+                Connecting Skills. Creating Opportunities.
               </span>
             </div>
           </div>
@@ -89,7 +89,7 @@ export default function Navbar({
           <Search className="search-icon" />
           <input
             type="text"
-            placeholder="Search AC repair, cobblers, tailors, shifting, pottery in your city..."
+            placeholder="Search cobblers, potters, tailors, handicrafts, local artisans..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />

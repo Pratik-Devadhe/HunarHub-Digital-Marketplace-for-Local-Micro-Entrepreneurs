@@ -34,13 +34,17 @@ export default function ArtisanMapView({ artisans, onSelectArtisan, onGetQuote }
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "0.98rem", color: "#0f172a" }}>{ep.business_name}</h4>
-                  <span style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: "0.85rem", color: "#f59e0b", fontWeight: 700 }}>
-                    <Star size={12} fill="#f59e0b" /> {ep.average_rating || "4.9"}
-                  </span>
+                  {Number(ep.average_rating) > 0 ? (
+                    <span style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: "0.85rem", color: "#f59e0b", fontWeight: 700 }}>
+                      <Star size={12} fill="#f59e0b" /> {Number(ep.average_rating).toFixed(1)}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: "0.8rem", color: "#64748b" }}>No reviews</span>
+                  )}
                 </div>
                 <div style={{ fontSize: "0.82rem", color: "#64748b", display: "flex", gap: "0.5rem", marginTop: "0.25rem" }}>
-                  <span><MapPin size={12} /> {ep.city || "Mumbai"}</span>
-                  <span>• {ep.experience_years || 10} Yrs Exp</span>
+                  <span><MapPin size={12} /> {ep.city || "Local region"}</span>
+                  {ep.experience_years ? <span>• {ep.experience_years} Yrs Exp</span> : null}
                 </div>
                 {ep.distance_km && (
                   <div style={{ fontSize: "0.78rem", color: "#10b981", fontWeight: 600, marginTop: "0.35rem" }}>
@@ -94,7 +98,13 @@ export default function ArtisanMapView({ artisans, onSelectArtisan, onGetQuote }
                 <h4 style={{ margin: "0 0 0.15rem 0", fontSize: "0.98rem", color: "#0f172a" }}>{selectedArtisan.business_name}</h4>
                 <div style={{ fontSize: "0.8rem", color: "#64748b" }}>{selectedArtisan.full_name}</div>
                 <div style={{ fontSize: "0.78rem", color: "#f59e0b", fontWeight: 700, marginTop: "0.15rem" }}>
-                  <Star size={12} fill="#f59e0b" style={{ display: "inline" }} /> {selectedArtisan.average_rating || "4.9"} ({selectedArtisan.total_reviews || 0} reviews)
+                  {Number(selectedArtisan.average_rating) > 0 ? (
+                    <>
+                      <Star size={12} fill="#f59e0b" style={{ display: "inline" }} /> {Number(selectedArtisan.average_rating).toFixed(1)} ({selectedArtisan.total_reviews || 0} reviews)
+                    </>
+                  ) : (
+                    <span style={{ color: "#64748b", fontWeight: 500 }}>No reviews yet</span>
+                  )}
                 </div>
               </div>
             </div>

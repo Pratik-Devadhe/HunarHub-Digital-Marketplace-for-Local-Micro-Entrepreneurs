@@ -157,12 +157,113 @@ const sendMessage = async (req, res) => {
     }
 
     const message = await withTransaction(async (c) => {
+      if (Number(senderId) === Number(receiverId)) {
+        throw httpError("Cannot send message to yourself", 400);
+      }
+
       // Verify receiver exists
-      const receiver = await c.query("SELECT id FROM users WHERE id = $1", [receiverId]);
-      if (!receiver.rowCount) throw httpError("Recipient user not found", 404);
+      const receiverRes = await c.query("SELECT id, role, is_active FROM users WHERE id = $1", [receiverId]);
+      if (!receiverRes.rowCount) throw httpError("Recipient user not found", 404);
+      const receiver = receiverRes.rows[0];
 
       const srId = service_request_id ? id(service_request_id, "service request id") : null;
       const ordId = order_id ? id(order_id, "order id") : null;
+
+      // Authorize relationship if neither party is admin
+      const senderRole = req.user.role;
+      const receiverRole = receiver.role;
+
+      if (senderRole !== "ADMIN" && receiverRole !== "ADMIN") {
+        if (srId) {
+          // Verify both users are related to this service request
+          const srCheck = await c.query(
+            `SELECT sr.id, sr.customer_id, ep.user_id as ep_user_id
+             FROM service_requests sr
+             LEFT JOIN entrepreneur_profiles ep ON ep.id = sr.entrepreneur_id
+             WHERE sr.id = $1`,
+            [srId]
+          );
+          if (!srCheck.rowCount) throw httpError("Service request not found", 404);
+          const sr = srCheck.rows[0];
+
+          // Check quotes as well for open quote participants
+          const quotesCheck = await c.query(
+            `SELECT ep.user_id
+             FROM quotes q
+             JOIN entrepreneur_profiles ep ON ep.id = q.entrepreneur_id
+             WHERE q.service_request_id = $1`,
+            [srId]
+          );
+          const quotedUserIds = quotesCheck.rows.map((r) => Number(r.user_id));
+          const allowedUserIds = new Set(
+            [
+              Number(sr.customer_id),
+              sr.ep_user_id ? Number(sr.ep_user_id) : null,
+              ...quotedUserIds
+            ].filter(Boolean)
+          );
+
+          if (!allowedUserIds.has(Number(senderId)) || !allowedUserIds.has(Number(receiverId))) {
+            throw httpError("You are not authorized to message on this service request", 403);
+          }
+        } else if (ordId) {
+          // Verify both users are related to this order
+          const ordCheck = await c.query(
+            `SELECT o.id, o.customer_id, ARRAY_AGG(DISTINCT ep.user_id) as ep_user_ids
+             FROM orders o
+             JOIN order_items oi ON oi.order_id = o.id
+             JOIN entrepreneur_profiles ep ON ep.id = oi.entrepreneur_id
+             WHERE o.id = $1
+             GROUP BY o.id, o.customer_id`,
+            [ordId]
+          );
+          if (!ordCheck.rowCount) throw httpError("Order not found", 404);
+          const ord = ordCheck.rows[0];
+          const allowedUserIds = new Set([
+            Number(ord.customer_id),
+            ...(ord.ep_user_ids || []).map(Number)
+          ]);
+
+          if (!allowedUserIds.has(Number(senderId)) || !allowedUserIds.has(Number(receiverId))) {
+            throw httpError("You are not authorized to message on this order", 403);
+          }
+        } else {
+          // Direct chat validation:
+          // Customers can message entrepreneurs (marketplace artisan inquiry).
+          // Entrepreneurs can message customers who have an existing thread or relationship.
+          if (senderRole === "ENTREPRENEUR" && receiverRole === "CUSTOMER") {
+            const hasPriorInteraction = await c.query(
+              `SELECT 1 FROM messages
+               WHERE (sender_id = $1 AND receiver_id = $2)
+                  OR (sender_id = $2 AND receiver_id = $1)
+               LIMIT 1`,
+              [senderId, receiverId]
+            );
+            if (!hasPriorInteraction.rowCount) {
+              const relCheck = await c.query(
+                `SELECT 1 FROM orders o
+                 JOIN order_items oi ON oi.order_id = o.id
+                 JOIN entrepreneur_profiles ep ON ep.id = oi.entrepreneur_id
+                 WHERE o.customer_id = $2 AND ep.user_id = $1
+                 UNION
+                 SELECT 1 FROM service_requests sr
+                 JOIN entrepreneur_profiles ep ON ep.id = sr.entrepreneur_id
+                 WHERE sr.customer_id = $2 AND ep.user_id = $1
+                 LIMIT 1`,
+                [senderId, receiverId]
+              );
+              if (!relCheck.rowCount) {
+                throw httpError(
+                  "Entrepreneurs can only message customers who have initiated contact or have an active order/service request",
+                  403
+                );
+              }
+            }
+          } else if (senderRole === "CUSTOMER" && receiverRole === "CUSTOMER") {
+            throw httpError("Direct messaging between customers is not permitted", 403);
+          }
+        }
+      }
 
       const result = await c.query(
         `INSERT INTO messages (sender_id, receiver_id, service_request_id, order_id, message_text, image_url)

@@ -85,9 +85,9 @@ export default function QuoteWizardModal({
           <div className="quote-modal-header-brand">
             <div className="quote-badge">
               <Sparkles className="quote-badge-icon" />
-              <span>Sulekha Expert Connect</span>
+              <span>HunarHub Direct Connect</span>
             </div>
-            <h2>Get Free Quotes from Verified Experts</h2>
+            <h2>Get Free Quotes from Local Artisans</h2>
             <p className="quote-modal-subtitle">
               {targetTitle} in <span className="city-highlight">📍 {userCity}</span>
             </p>
@@ -276,15 +276,23 @@ export default function QuoteWizardModal({
                   <div className="expert-info">
                     <div className="expert-name-row">
                       <strong>{exp.business_name || exp.full_name}</strong>
-                      <span className="verified-badge-pill">
-                        <ShieldCheck size={12} /> Sulekha Verified
-                      </span>
+                      {exp.verification_status === "APPROVED" && (
+                        <span className="verified-badge-pill">
+                          <ShieldCheck size={12} /> Verified Artisan
+                        </span>
+                      )}
                     </div>
-                    <p className="expert-sub">{exp.experience_years || 10}+ Yrs Experience • {exp.city || userCity}</p>
+                    <p className="expert-sub">{exp.experience_years ? `${exp.experience_years}+ Yrs Experience • ` : ""}{exp.city || userCity}</p>
                     <div className="expert-rating-row">
-                      <Star size={14} className="star-icon-filled" />
-                      <span>{Number(exp.average_rating || 4.9).toFixed(1)}</span>
-                      <span className="response-time">⚡ Responds in ~15 mins</span>
+                      {Number(exp.average_rating) > 0 ? (
+                        <>
+                          <Star size={14} className="star-icon-filled" />
+                          <span>{Number(exp.average_rating).toFixed(1)}</span>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>New Artisan</span>
+                      )}
+                      {exp.response_time && <span className="response-time">⚡ {exp.response_time}</span>}
                     </div>
                   </div>
                 </div>

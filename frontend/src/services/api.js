@@ -220,6 +220,9 @@ export const api = {
   getMyComplaints: () => request("/complaints/my"),
 
   // Reviews
+  getRecentReviews: () => request("/reviews"),
+  getReviewsByEntrepreneur: (id) => request(`/reviews/entrepreneur/${id}`),
+  getReviewsByProduct: (id) => request(`/reviews/product/${id}`),
   createReview: (reviewData) =>
     request("/reviews", { method: "POST", body: JSON.stringify(reviewData) }),
 

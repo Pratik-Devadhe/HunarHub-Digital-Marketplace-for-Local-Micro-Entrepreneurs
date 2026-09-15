@@ -85,10 +85,16 @@ export default function ArtisanProfileModal({ artisanId, onClose, onRequestServi
                     <MapPin size={14} color="#f59e0b" /> {artisan.city || "Local"}, {artisan.state || "India"}
                   </span>
                   <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                    <Briefcase size={14} color="#f59e0b" /> {artisan.experience_years || 5}+ Years Experience
+                    <Briefcase size={14} color="#f59e0b" /> {artisan.experience_years ? `${artisan.experience_years}+ Years Experience` : "Experience not specified"}
                   </span>
                   <span style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: "#f59e0b", fontWeight: 700 }}>
-                    <Star size={14} fill="#f59e0b" /> {artisan.average_rating || "4.9"} ({artisan.total_reviews || 0} reviews)
+                    {Number(artisan.average_rating) > 0 ? (
+                      <>
+                        <Star size={14} fill="#f59e0b" /> {Number(artisan.average_rating).toFixed(1)} ({artisan.total_reviews || 0} reviews)
+                      </>
+                    ) : (
+                      <span style={{ color: "#94a3b8", fontWeight: 500 }}>No reviews yet</span>
+                    )}
                   </span>
                 </div>
 
@@ -158,31 +164,33 @@ export default function ArtisanProfileModal({ artisanId, onClose, onRequestServi
                 <>
                   <div className="artisan-stats-grid">
                     <div className="art-stat-card">
-                      <div className="art-stat-val">₹{artisan.starting_price || 250}</div>
+                      <div className="art-stat-val">{artisan.starting_price ? `₹${artisan.starting_price}` : "Custom"}</div>
                       <div className="art-stat-lbl">Starting Price</div>
                     </div>
                     <div className="art-stat-card">
-                      <div className="art-stat-val">{artisan.completed_orders_count || 120}+</div>
+                      <div className="art-stat-val">{artisan.completed_orders_count || 0}</div>
                       <div className="art-stat-lbl">Completed Orders</div>
                     </div>
                     <div className="art-stat-card">
-                      <div className="art-stat-val">98%</div>
-                      <div className="art-stat-lbl">On-Time Delivery</div>
+                      <div className="art-stat-val">{artisan.total_reviews > 0 ? "100%" : "New Provider"}</div>
+                      <div className="art-stat-lbl">Fulfillment Rate</div>
                     </div>
                     <div className="art-stat-card">
-                      <div className="art-stat-val">15 Mins</div>
-                      <div className="art-stat-lbl">Avg Response</div>
+                      <div className="art-stat-val">{artisan.response_time || "Direct Chat"}</div>
+                      <div className="art-stat-lbl">Response Time</div>
                     </div>
                   </div>
 
                   <div className="artisan-bio-box">
                     <h4>About the Artisan & Craft Specialty</h4>
-                    <p>{artisan.bio || "Local expert skilled in traditional and modern custom craftwork, dedicated to delivering pristine quality and high customer satisfaction."}</p>
+                    <p>{artisan.bio || "No biography provided yet."}</p>
                   </div>
 
                   <div className="artisan-bio-box">
                     <h4>Location & Workshop Address</h4>
-                    <p>{artisan.address || "Main Market Workshop"}, {artisan.city || "City"}, {artisan.state || "State"} - {artisan.pincode || "400001"}</p>
+                    <p>
+                      {[artisan.address, artisan.city, artisan.state, artisan.pincode].filter(Boolean).join(", ") || "Location details available upon direct inquiry"}
+                    </p>
                   </div>
 
                   {/* Skills & Trade Expertise */}

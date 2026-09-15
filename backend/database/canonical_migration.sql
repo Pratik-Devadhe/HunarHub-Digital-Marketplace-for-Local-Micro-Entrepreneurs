@@ -151,3 +151,11 @@ CREATE INDEX IF NOT EXISTS idx_quotes_request ON quotes(service_request_id);
 CREATE INDEX IF NOT EXISTS idx_portfolio_entrepreneur ON portfolio_items(entrepreneur_id);
 CREATE INDEX IF NOT EXISTS idx_orders_entrepreneur ON orders(entrepreneur_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_status ON order_items(status);
+
+-- 11. Booking Concurrency Protection
+CREATE UNIQUE INDEX IF NOT EXISTS unique_active_slot_booking
+ON service_requests (entrepreneur_id, requested_date, requested_time)
+WHERE status IN ('PENDING', 'ACCEPTED', 'IN_PROGRESS')
+  AND entrepreneur_id IS NOT NULL
+  AND requested_date IS NOT NULL
+  AND requested_time IS NOT NULL;

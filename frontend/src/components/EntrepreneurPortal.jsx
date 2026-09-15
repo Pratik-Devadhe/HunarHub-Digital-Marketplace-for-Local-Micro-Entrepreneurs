@@ -19,7 +19,8 @@ import {
   ToggleLeft,
   ToggleRight,
   Star,
-  Tag
+  Tag,
+  AlertTriangle
 } from "lucide-react";
 import { api } from "../services/api";
 import ChatModal from "./ChatModal";
@@ -41,6 +42,7 @@ export default function EntrepreneurPortal({ user, showToast, onRefreshUser }) {
   const [selectedSkillToAdd, setSelectedSkillToAdd] = useState("");
   const [myReviews, setMyReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Business Profile Onboarding State
   const [submittingProfile, setSubmittingProfile] = useState(false);
@@ -139,27 +141,32 @@ export default function EntrepreneurPortal({ user, showToast, onRefreshUser }) {
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const [dashRes, reqRes, ordRes, svcsRes, prodsRes, openRes, availRes, mySkillsRes, allSkillsRes, reviewsRes] = await Promise.all([
-        api.getEntrepreneurDashboard().catch(() => ({ dashboard: {} })),
-        api.getReceivedServiceRequests().catch(() => ({ requests: [] })),
-        api.getReceivedOrders().catch(() => ({ orders: [] })),
-        api.getMyServices().catch(() => ({ services: [] })),
-        api.getMyProducts().catch(() => ({ products: [] })),
-        api.getMyServiceRequests().catch(() => ({ requests: [] })),
-        api.getMyAvailability().catch(() => ({ availability: [] })),
-        api.getMyEntrepreneurSkills().catch(() => ({ skills: [] })),
-        api.getSkills().catch(() => ({ skills: [] })),
-        api.getMyEntrepreneurReviews().catch(() => ({ reviews: [] }))
+      const [dashRes, reqRes, ordRes, svcsRes, prodsRes, availRes, mySkillsRes, allSkillsRes, reviewsRes] = await Promise.all([
+        api.getEntrepreneurDashboard(),
+        api.getReceivedServiceRequests(),
+        api.getReceivedOrders(),
+        api.getMyServices(),
+        api.getMyProducts(),
+        api.getMyAvailability(),
+        api.getMyEntrepreneurSkills(),
+        api.getSkills(),
+        api.getMyEntrepreneurReviews()
       ]);
 
       const ep = dashRes.dashboard?.entrepreneur || {};
       setDashboard(dashRes.dashboard || {});
-      setRequests(reqRes.requests || []);
+
+      const allReceived = reqRes.requests || [];
+      const bookedJobs = allReceived.filter((r) => ep.id && Number(r.entrepreneur_id) === Number(ep.id));
+      const quoteLeads = allReceived.filter((r) => !r.entrepreneur_id || Number(r.entrepreneur_id) !== Number(ep.id));
+
+      setRequests(bookedJobs);
+      setOpenLeads(quoteLeads);
       setOrders(ordRes.orders || []);
       setMyServices(svcsRes.services || []);
       setMyProducts(prodsRes.products || []);
-      setOpenLeads(openRes.requests || reqRes.requests || []);
       setAvailability(availRes.availability || []);
       setMySkills(mySkillsRes.skills || []);
       setAllSkills(allSkillsRes.skills || []);
@@ -169,8 +176,8 @@ export default function EntrepreneurPortal({ user, showToast, onRefreshUser }) {
         setOnboardingData({
           business_name: ep.business_name || "",
           phone: ep.phone || user?.phone || "",
-          city: ep.city || "Mumbai",
-          experience_years: String(ep.experience_years ?? 3),
+          city: ep.city || "",
+          experience_years: String(ep.experience_years ?? ""),
           address: ep.address || "",
           bio: ep.bio || ""
         });
@@ -180,7 +187,8 @@ export default function EntrepreneurPortal({ user, showToast, onRefreshUser }) {
       }
     } catch (err) {
       console.error("Failed to refresh entrepreneur data:", err);
-      showToast("error", "Failed to refresh entrepreneur data");
+      setError(err.message || "Failed to load entrepreneur dashboard");
+      showToast("error", err.message || "Failed to refresh entrepreneur data");
     } finally {
       setLoading(false);
     }
@@ -485,9 +493,19 @@ export default function EntrepreneurPortal({ user, showToast, onRefreshUser }) {
           <h1 className="portal-title">Artisan & Entrepreneur Workspace</h1>
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "0.25rem", flexWrap: "wrap" }}>
             <span className="business-name">{ep.business_name || user?.full_name}</span>
-            <span className="badge badge-accepted" style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
-              <ShieldCheck size={14} /> Verified Artisan
-            </span>
+            {dashboard?.entrepreneur?.verification_status === "APPROVED" ? (
+              <span className="badge badge-accepted" style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                <ShieldCheck size={14} /> Verified Artisan
+              </span>
+            ) : dashboard?.entrepreneur?.verification_status === "REJECTED" ? (
+              <span className="badge badge-rejected" style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", color: "#f87171", borderColor: "#ef4444" }}>
+                Verification Rejected
+              </span>
+            ) : (
+              <span className="badge badge-pending" style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                Verification Pending
+              </span>
+            )}
           </div>
         </div>
         <button onClick={fetchData} className="btn-secondary">
@@ -496,13 +514,25 @@ export default function EntrepreneurPortal({ user, showToast, onRefreshUser }) {
         </button>
       </div>
 
+      {error && (
+        <div className="glass-panel" style={{ padding: "1.2rem", margin: "1rem 0", border: "1px solid #ef4444", borderRadius: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#f87171" }}>
+            <AlertTriangle size={18} />
+            <span>{error}</span>
+          </div>
+          <button onClick={fetchData} className="btn-secondary" style={{ padding: "0.35rem 0.75rem", fontSize: "0.85rem" }}>
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Metrics Grid */}
       <div className="metrics-grid">
         <div className="glass-panel metric-card">
           <span className="metric-label">Total Revenue</span>
           <div className="metric-value-box">
             <DollarSign className="w-5 h-5 text-emerald-400" />
-            <span className="metric-number emerald">₹{counts.earnings || 14500}</span>
+            <span className="metric-number emerald">₹{counts.earnings || 0}</span>
           </div>
         </div>
 

@@ -12,13 +12,13 @@ export default function CartPage({
   showToast
 }) {
   const navigate = useNavigate();
-  const [shippingAddress, setShippingAddress] = useState("Flat 402, Sunshine Apartments, Bandra West, Mumbai");
+  const [shippingAddress, setShippingAddress] = useState("");
   const [loading, setLoading] = useState(false);
 
   const subtotal = cartItems.reduce((acc, item) => acc + Number(item.price) * item.quantity, 0);
   const deliveryFee = 0; // Free delivery offer
-  const tax = subtotal * 0.05; // 5% GST included/calculated
-  const grandTotal = subtotal + deliveryFee;
+  const tax = Number((subtotal * 0.05).toFixed(2)); // 5% GST
+  const grandTotal = Number((subtotal + tax + deliveryFee).toFixed(2));
 
   const handleCheckoutSubmit = async (e) => {
     e.preventDefault();
@@ -175,7 +175,7 @@ export default function CartPage({
                 <span className="text-free">FREE</span>
               </div>
               <div className="summary-data-row">
-                <span>Estimated Taxes (Included)</span>
+                <span>Estimated Taxes (5% GST)</span>
                 <span>₹{tax.toFixed(2)}</span>
               </div>
 

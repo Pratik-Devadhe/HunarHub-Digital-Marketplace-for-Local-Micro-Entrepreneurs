@@ -20,7 +20,7 @@ export default function Footer({ onOpenAuth }) {
             </p>
             <div className="footer-trust-badge-row">
               <ShieldCheck size={18} className="text-emerald" />
-              <span>100% Identity & Skill Verified Local Experts</span>
+              <span>Direct Connect With Local Grassroots Artisans</span>
             </div>
           </div>
 

@@ -80,7 +80,7 @@ const createServiceRequest = async (req, res) => {
 
       // Verify Entrepreneur status if specifically targeted
       if (targetEntrepreneurId) {
-        const epCheck = await c.query("SELECT verification_status FROM entrepreneur_profiles WHERE id = $1", [targetEntrepreneurId]);
+        const epCheck = await c.query("SELECT verification_status FROM entrepreneur_profiles WHERE id = $1 FOR UPDATE", [targetEntrepreneurId]);
         if (!epCheck.rowCount) {
           throw httpError("Entrepreneur profile not found", 404);
         }
@@ -104,6 +104,7 @@ const createServiceRequest = async (req, res) => {
       const reqTitle = title || (description ? description.slice(0, 100) : "Service Request");
       const bMin = budget_min || budget || null;
       const bMax = budget_max || budget || null;
+      const initialStatus = (!targetEntrepreneurId || req.body.status === "REQUESTED") ? "REQUESTED" : "PENDING";
 
       const r = await c.query(
         `INSERT INTO service_requests
@@ -111,7 +112,7 @@ const createServiceRequest = async (req, res) => {
           title, description, budget_min, budget_max,
           location_address, address, city,
           requested_date, requested_time, estimated_price, customer_note, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'PENDING')
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
          RETURNING *`,
         [
           req.user.id,
@@ -128,7 +129,8 @@ const createServiceRequest = async (req, res) => {
           requested_date || null,
           requested_time || null,
           estPrice ? Number(estPrice) : null,
-          customer_note || null
+          customer_note || null,
+          initialStatus
         ]
       );
 
@@ -199,7 +201,7 @@ const getReceivedRequests = async (req, res) => {
          LEFT JOIN services s ON s.id = sr.service_id
          JOIN users u ON u.id = sr.customer_id
          LEFT JOIN quotes q ON q.service_request_id = sr.id AND q.entrepreneur_id = $1
-         WHERE sr.entrepreneur_id = $1 OR (sr.entrepreneur_id IS NULL AND sr.status = 'PENDING') OR q.id IS NOT NULL
+         WHERE sr.entrepreneur_id = $1 OR (sr.entrepreneur_id IS NULL AND sr.status IN ('PENDING', 'REQUESTED', 'QUOTED')) OR q.id IS NOT NULL
          ORDER BY sr.created_at DESC`,
         [epId]
       );

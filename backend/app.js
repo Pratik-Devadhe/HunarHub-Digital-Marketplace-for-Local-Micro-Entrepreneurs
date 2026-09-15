@@ -7,21 +7,22 @@ const app = express();
 
 const allowedOrigins = [
   "https://hunarhub-frontend-seven.vercel.app",
+  process.env.FRONTEND_URL,
   "http://localhost:5173",
   "http://localhost:3000",
   "http://localhost:8080",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:3000"
-];
+].filter(Boolean);
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (such as mobile apps, curl, server-to-server)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || /^https:\/\/hunarhub-frontend.*\.vercel\.app$/.test(origin)) {
+    if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    return callback(null, false);
+    return callback(new Error("CORS policy violation: Origin not allowed"), false);
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],

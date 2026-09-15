@@ -1,283 +1,233 @@
-# HunarHub
+# HunarHub — Digital Marketplace for Local Micro-Entrepreneurs
 
-HunarHub is a digital marketplace that connects local micro-entrepreneurs and skilled workers with customers. The platform allows entrepreneurs such as artisans, tailors, potters, cobblers, weavers, and other local service providers to showcase their skills and reach customers online.
+[![Build & Test Status](https://img.shields.io/badge/E2E%20Tests-55%20Passing-brightgreen)](backend/test_all_workflows.js)
+[![Database](https://img.shields.io/badge/Database-PostgreSQL%20%2B%20PostGIS-blue)](backend/database/schema.sql)
+[![Frontend](https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-61dafb)](frontend)
+[![Backend](https://img.shields.io/badge/Backend-Node.js%20%2B%20Express-green)](backend)
 
-The goal of HunarHub is to provide local entrepreneurs with a simple digital platform to promote their services and products while making it easier for customers to discover and book trusted local services.
+**HunarHub** is an end-to-end digital marketplace designed to economically empower local micro-entrepreneurs and traditional tradespeople—specifically **Cobblers, Potters (Kumhars), Tailors, Artisans/Handicrafts, and Local Small Vendors**—by connecting them directly with urban customers for services, custom craft commissions, and handmade physical goods.
 
-## Live Application
+---
 
-[HunarHub](https://hunarhub-frontend-seven.vercel.app/)
+## Live Deployments
 
-## Features
+- **Frontend (Production):** [https://hunarhub-frontend-seven.vercel.app](https://hunarhub-frontend-seven.vercel.app/)
+- **Backend (Production API):** [https://hunarhub-backend-sandy.vercel.app](https://hunarhub-backend-sandy.vercel.app/)
 
-### Customer
+---
 
-* User registration and login
-* Browse services and products
-* Search and filter services
-* View entrepreneur profiles
-* View service details
-* Book services
-* Manage bookings
-* Purchase products
-* Manage profile
+## Key Features & Role-Based Access Control (RBAC)
 
-### Entrepreneur
+HunarHub enforces strict server-side role-based authorization across three distinct personas:
 
-* Entrepreneur registration and login
-* Create and manage profile
-* Add services
-* Manage service availability
-* Add and manage products
-* View customer bookings
-* Manage booking status
-* Manage business information
+### 1. Customer (`CUSTOMER`)
+- **Discovery & Search:** Real-time search across verified artisans, physical products, and on-demand services with filters for category, city, price range, and rating.
+- **Doorstep & Custom Service Requests:**
+  - Direct booking of fixed-price or hourly artisan services with date/time scheduling.
+  - Open custom quote requests where local artisans can bid with estimated price and delivery timeline.
+- **Multi-Vendor Cart & Checkout:** Persistent multi-item cart with automatic 5% GST tax calculation and flat delivery fee, featuring atomic stock deduction and row-level locking (`FOR UPDATE`).
+- **Payments:** Seamless checkout with Razorpay SDK or fallback to Direct UPI / Cash on Delivery (no mock or fake payment signatures).
+- **Communication:** Secure in-app direct messaging with artisans regarding bookings, custom orders, or trade inquiries.
+- **Verified Feedback & Disputes:** Submit 1-to-5 star reviews exclusively on completed jobs; raise structured complaints with status tracking.
 
-### Admin
+### 2. Micro-Entrepreneur (`ENTREPRENEUR`)
+- **Verification Gate:** Newly registered entrepreneurs enter `PENDING` verification status and are hidden from public discovery until verified by an Admin.
+- **Artisan Showcase & Profile:** Manage workshop address, geolocation coordinates (PostGIS), business bio, years of experience, and portfolio gallery.
+- **Catalog Management:** Add, edit, and toggle services and physical products with inventory stock levels.
+- **Order State Machine:** Manage physical orders through safe state transitions:  
+  `PENDING` ➔ `PROCESSING` ➔ `READY` ➔ `COMPLETED` (or `CANCELLED`).
+- **Service Request Management:** Review incoming bookings and open quote leads:  
+  `PENDING` ➔ `ACCEPTED` ➔ `IN_PROGRESS` ➔ `COMPLETED`.
+- **Live Analytics:** Track genuine gross revenue, completed jobs, active customer orders, and verified average rating derived directly from customer reviews.
 
-* Manage users
-* Manage entrepreneurs
-* Manage services and products
-* Manage bookings
-* Monitor marketplace activity
+### 3. Administrator (`ADMIN`)
+- **Strict Role Protection:** Admin accounts cannot be created via public registration APIs.
+- **Artisan KYC & Verification:** Review pending artisan applications and approve or reject profiles.
+- **Taxonomy Governance:** Create, update, or remove marketplace categories and craft skills.
+- **Dispute Resolution:** Review customer complaints, investigate order/service contexts, and mark complaints `RESOLVED` or `REJECTED` with administrative notes.
+- **Platform Analytics:** Real-time database metrics covering aggregate marketplace volume, average order value, active artisan counts, and monthly revenue trends.
 
-## Main Application Flow
+---
+
+## Tech Stack & Architecture
 
 ```text
-Customer
-   |
-   v
-Register / Login
-   |
-   v
-Browse Services / Products
-   |
-   v
-Search / Filter
-   |
-   v
-View Service or Product
-   |
-   +-------------------+
-   |                   |
-   v                   v
-Book Service       Purchase Product
-   |                   |
-   v                   v
-Booking            Checkout
-Confirmation          |
-   |                   v
-   v                 Order
-Track Booking       Confirmation
-   |
-   v
-Complete Service
-   |
-   v
-Review / Rating
+               ┌────────────────────────────────────────────────────────┐
+               │              HunarHub Frontend (React 19)              │
+               │  Vite · React Router · Lucide Icons · Tailwind/CSS3   │
+               └───────────────────────────┬────────────────────────────┘
+                                           │
+                                     HTTPS │ /api/*
+                                           ▼
+               ┌────────────────────────────────────────────────────────┐
+               │           HunarHub Backend API (Node.js/Express)       │
+               │  JWT Auth · Role Guards · Atomic Transactions (ACID)   │
+               └─────────────┬────────────────────────────┬─────────────┘
+                             │                            │
+                             ▼                            ▼
+              ┌───────────────────────────┐   ┌───────────────────────────┐
+              │  Neon Cloud PostgreSQL   │   │     Razorpay Gateway      │
+              │  PostGIS Geolocation      │   │  (Standard Web Checkout)  │
+              │  Normalized Schema        │   └───────────────────────────┘
+              │  Performance Indexes      │
+              └───────────────────────────┘
 ```
 
-## Technology Stack
+- **Frontend:** React 19, Vite, React Router 7, Lucide Icons, Custom Responsive CSS.
+- **Backend:** Node.js, Express.js REST API with standardized `/api` canonical routing.
+- **Database:** PostgreSQL (Neon Serverless) with PostGIS extension for spatial queries.
+- **Security:** JWT authentication, bcrypt password hashing, parameterized SQL queries preventing SQL injection, strict CORS policies, role-based middleware guards.
+- **Data Integrity:** ACID-compliant database transactions (`withTransaction`) for orders, inventory reservations, and rating recalculation.
 
-### Frontend
-
-* React.js
-* Vite
-* JavaScript
-* HTML5
-* CSS3
-* React Router
-* Lucide React
-
-### Backend
-
-* Node.js
-* Express.js
-* REST APIs
-
-### Database
-
-* PostgreSQL
-
-### Other Technologies
-
-* Git and GitHub
-* Vercel
-* Cloudinary/Image storage
-* Environment variables
+---
 
 ## Project Structure
 
 ```text
 HunarHub/
-│
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   ├── pages/
+│   │   │   ├── AdminPortal.jsx           # Admin governance & KYC verification
+│   │   │   ├── ArtisanMapView.jsx        # Geolocation map of local artisans
+│   │   │   ├── ArtisanProfileModal.jsx   # Artisan portfolio, skills & reviews modal
+│   │   │   ├── CartPage.jsx              # Multi-vendor cart with GST calculation
+│   │   │   ├── CustomerPortal.jsx        # Customer order & booking management
+│   │   │   ├── EntrepreneurPortal.jsx    # Artisan dashboard & inventory management
+│   │   │   ├── Marketplace.jsx           # Main discovery & search catalog
+│   │   │   └── QuoteWizardModal.jsx      # Custom artisan quote bidding wizard
 │   │   ├── services/
-│   │   ├── context/
-│   │   └── assets/
-│   │
-│   ├── public/
+│   │   │   └── api.js                    # Canonical centralized API client
+│   │   ├── App.jsx                       # Routing & role authorization guards
+│   │   └── main.jsx
 │   ├── package.json
 │   └── vite.config.js
 │
 ├── backend/
-│   ├── controllers/
-│   ├── routes/
-│   ├── models/
-│   ├── middleware/
 │   ├── config/
-│   ├── sql/
-│   └── server.js
+│   │   └── db.js                         # PostgreSQL connection pool configuration
+│   ├── controllers/                      # Business logic controllers
+│   │   ├── authController.js             # Registration & JWT authentication
+│   │   ├── orderController.js            # Stock-safe orders & status transitions
+│   │   ├── serviceRequestController.js   # Service bookings & quote bids
+│   │   ├── reviewController.js           # Verified review & rating recalculation
+│   │   ├── messageController.js          # Direct chat & participant authorization
+│   │   ├── adminController.js            # KYC approval & dispute resolution
+│   │   └── ...
+│   ├── database/
+│   │   └── schema.sql                    # Full PostgreSQL DDL schema & indexes
+│   ├── middleware/
+│   │   └── auth.js                       # JWT verification & role authorization
+│   ├── routes/                           # Express modular routers
+│   ├── utils/
+│   │   ├── http.js                       # Standardized HTTP error helpers
+│   │   └── transaction.js                # Database transaction wrapper
+│   ├── app.js                            # Express app entry & CORS configuration
+│   ├── server.js                         # Server listener
+│   └── test_all_workflows.js             # Comprehensive 55-test E2E test suite
 │
+├── AUDIT.md                              # Comprehensive production audit matrix
+├── IMPLEMENTATION_REPORT.md              # Detailed implementation & verification report
 └── README.md
 ```
 
-## Installation
+---
 
-### 1. Clone the Repository
+## Environment Variables
 
+### Backend Configuration (`backend/.env`)
+
+Copy `backend/.env.example` to `backend/.env`:
+
+```env
+PORT=8080
+DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+JWT_SECRET=your_jwt_secret_key
+JWT_EXPIRES_IN=7d
+FRONTEND_URL=https://hunarhub-frontend-seven.vercel.app
+
+# Optional Razorpay API credentials
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+```
+
+### Frontend Configuration (`frontend/.env`)
+
+Copy `frontend/.env.example` to `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:8080
+
+# Optional Razorpay client key ID
+VITE_RAZORPAY_KEY_ID=
+```
+
+---
+
+## Local Development Setup
+
+### 1. Prerequisites
+- Node.js (v18 or higher)
+- PostgreSQL (v14 or higher) with PostGIS extension
+
+### 2. Clone Repository
 ```bash
 git clone https://github.com/Pratik-Devadhe/HunarHub-Digital-Marketplace-for-Local-Micro-Entrepreneurs.git
 cd HunarHub-Digital-Marketplace-for-Local-Micro-Entrepreneurs
 ```
 
-### 2. Backend Setup
-
+### 3. Setup Backend
 ```bash
 cd backend
 npm install
-```
-
-Create a `.env` file inside the backend directory:
-
-```env
-PORT=8080
-
-DB_HOST=your_database_host
-DB_PORT=5432
-DB_NAME=your_database_name
-DB_USER=your_database_user
-DB_PASSWORD=your_database_password
-
-JWT_SECRET=your_jwt_secret
-```
-
-Start the backend:
-
-```bash
+# Configure backend/.env with your DATABASE_URL and JWT_SECRET
 npm start
 ```
+The backend will be available at `http://localhost:8080` (or `PORT`).
 
-For development:
-
+### 4. Setup Frontend
 ```bash
-npm run dev
-```
-
-### 3. Frontend Setup
-
-Open another terminal:
-
-```bash
-cd frontend
+cd ../frontend
 npm install
-```
-
-Create a `.env` file:
-
-```env
-VITE_API_URL=http://localhost:8080
-```
-
-Start the frontend:
-
-```bash
 npm run dev
 ```
+The frontend will be available at `http://localhost:5173`.
 
-The frontend will normally be available at:
+---
 
-```text
-http://localhost:5173
+## Running Verification & End-to-End Tests
+
+The backend includes a comprehensive automated test suite testing all core marketplace workflows end-to-end against the database:
+
+```bash
+cd backend
+node test_all_workflows.js
 ```
 
-## Database Setup
+### Coverage (54 Automated Tests):
+1. **Canonical API Routing:** `/api` routing prefix enforcement and health checks.
+2. **Public Discovery:** Category/skill taxonomy, city and price-range search filtering.
+3. **Authentication & RBAC:** Customer, Entrepreneur, and Admin login; privilege escalation protection.
+4. **Artisan KYC Gate:** `PENDING` visibility quarantine until Admin KYC approval.
+5. **Skills Management:** Dynamic portfolio skill addition and deletion.
+6. **Stock Concurrency & Orders:** Atomic inventory decrement, oversell prevention (`409`), order fulfillment state transitions.
+7. **Service Bookings & State Machine:** Direct booking lifecycle, cancellation constraints, invalid status transition protection.
+8. **Reviews & Rating Derivation:** Verified customer review submission, duplicate prevention (`409`), dynamic average rating recalculation.
+9. **Disputes & Governance:** Customer complaint ticketing, administrative dispute resolution.
+10. **Taxonomy Management:** Category creation and deletion.
+11. **Chat Security:** Self-messaging prevention, customer-artisan inquiries, participant authorization on private jobs.
+12. **Cart Math & Favorites:** Tax calculation (5% GST), deduplicated favorites with unique constraints.
 
-1. Install PostgreSQL.
-2. Create a database for HunarHub.
-3. Configure the database credentials in the backend `.env` file.
-4. Run the SQL schema provided in the backend SQL directory.
-5. Start the backend server.
+---
 
-## API Modules
+## Production Audit
 
-The backend is organized around REST APIs for:
+For a granular record of all audited architectural items, root cause analyses, and solutions, refer to [AUDIT.md](AUDIT.md).
 
-* Authentication
-* Users
-* Entrepreneurs
-* Services
-* Products
-* Bookings
-* Orders
-* Payments
-* Reviews
-* Admin operations
-
-## Environment Variables
-
-Environment variables should be used for sensitive configuration.
-
-Do not commit the `.env` file to GitHub.
-
-Example:
-
-```env
-VITE_API_URL=http://localhost:8080
-```
-
-Backend environment variables should contain database credentials, JWT secrets, and other private configuration.
-
-## Deployment
-
-The frontend can be deployed using Vercel.
-
-The backend can be deployed separately using platforms such as Render, Railway, or other Node.js hosting services.
-
-After deploying the backend, update the frontend environment variable:
-
-```env
-VITE_API_URL=https://your-backend-url.com
-```
-
-Then redeploy the frontend.
-
-## Future Improvements
-
-* Online payment integration
-* Real-time chat between customers and entrepreneurs
-* Location-based service discovery
-* Notifications
-* Wishlist and favorites
-* Product cart and checkout
-* Order tracking
-* Advanced entrepreneur analytics
-* Admin analytics dashboard
-* Service recommendations
-* Improved review and rating system
-* Mobile application
-
-## Purpose
-
-HunarHub aims to digitally empower local micro-entrepreneurs by helping them showcase their skills, products, and services to a wider customer base.
-
-The platform focuses on connecting local talent with customers while providing a simple and accessible digital marketplace.
+---
 
 ## Author
 
-Pratik Devadhe
-
-GitHub: https://github.com/Pratik-Devadhe
+**Pratik Devadhe**  
+- GitHub: [@Pratik-Devadhe](https://github.com/Pratik-Devadhe)  
+- Repository: [HunarHub-Digital-Marketplace-for-Local-Micro-Entrepreneurs](https://github.com/Pratik-Devadhe/HunarHub-Digital-Marketplace-for-Local-Micro-Entrepreneurs)

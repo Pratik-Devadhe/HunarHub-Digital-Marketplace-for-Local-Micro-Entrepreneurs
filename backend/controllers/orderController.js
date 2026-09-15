@@ -18,16 +18,20 @@ const createOrder = async (req, res) => {
       if (products.rowCount !== unique.length) throw httpError("One or more products are unavailable", 409);
 
       const map = new Map(products.rows.map(p => [Number(p.id), p]));
-      let total = 0;
+      let subtotal = 0;
       const prepared = items.map(x => {
         const p = map.get(Number(x.product_id));
         const q = Number(x.quantity);
         if (!Number.isInteger(q) || q <= 0) throw httpError("Invalid quantity");
         if (p.stock_quantity < q) throw httpError(`Insufficient stock for ${p.name}`, 409);
-        const subtotal = Number(p.price) * q;
-        total += subtotal;
-        return { p, q, subtotal };
+        const itemSubtotal = Number(p.price) * q;
+        subtotal += itemSubtotal;
+        return { p, q, subtotal: itemSubtotal };
       });
+
+      const tax = Math.round(subtotal * 0.05 * 100) / 100; // 5% GST
+      const deliveryFee = 0; // Standard free delivery for micro-entrepreneurs
+      const grandTotal = Math.round((subtotal + tax + deliveryFee) * 100) / 100;
 
       const initialPaymentStatus = "PENDING";
 
@@ -36,7 +40,7 @@ const createOrder = async (req, res) => {
       const order = (await c.query(
         `INSERT INTO orders (customer_id, entrepreneur_id, total_amount, status, payment_status, shipping_address)
          VALUES ($1, $2, $3, 'PENDING', $4, $5) RETURNING *`,
-        [req.user.id, primaryEntrepreneurId, total, initialPaymentStatus, shipping_address || null]
+        [req.user.id, primaryEntrepreneurId, grandTotal, initialPaymentStatus, shipping_address || null]
       )).rows[0];
 
       for (const x of prepared) {
@@ -179,7 +183,17 @@ const transitionOrder = async (req, res, nextStatus, allowed, actor) => {
             [item.quantity, item.product_id]
           );
         }
+        await c.query("UPDATE order_items SET status = 'CANCELLED' WHERE order_id = $1", [orderId]);
+      } else if (actor === "entrepreneur") {
+        await c.query(
+          `UPDATE order_items oi
+           SET status = $1
+           FROM entrepreneur_profiles ep
+           WHERE oi.order_id = $2 AND oi.entrepreneur_id = ep.id AND ep.user_id = $3`,
+          [nextStatus, orderId, req.user.id]
+        );
       }
+
       const updated = (await c.query("UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *", [nextStatus, orderId])).rows[0];
 
       let targetUserId = o.customer_id;

@@ -38,15 +38,17 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
   // Dispute / Complaint Modal State
   const [complaintTarget, setComplaintTarget] = useState(null);
   const [complaintForm, setComplaintForm] = useState({ subject: "", description: "" });
+  const [error, setError] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [ordRes, reqRes, favRes, cmpRes] = await Promise.all([
-        api.getMyOrders().catch(() => ({ orders: [] })),
-        api.getMyServiceRequests().catch(() => ({ requests: [] })),
-        api.getFavorites().catch(() => ({ favorites: [] })),
-        api.getMyComplaints().catch(() => ({ complaints: [] }))
+        api.getMyOrders(),
+        api.getMyServiceRequests(),
+        api.getFavorites(),
+        api.getMyComplaints()
       ]);
       setOrders(ordRes.orders || []);
       setRequests(reqRes.requests || []);
@@ -54,7 +56,8 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
       setComplaints(cmpRes.complaints || []);
     } catch (err) {
       console.error("Failed to load customer dashboard data:", err);
-      showToast("error", "Failed to load customer dashboard data");
+      setError(err.message || "Failed to load customer dashboard data");
+      showToast("error", err.message || "Failed to load customer dashboard data");
     } finally {
       setLoading(false);
     }
@@ -128,48 +131,86 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
   const handlePayOrder = async (orderId) => {
     try {
       const pOrder = await api.createPaymentOrder({ order_id: orderId });
-      if (pOrder?.is_configured && pOrder?.razorpay_order?.id) {
-        await api.verifyPayment({
-          razorpay_order_id: pOrder.razorpay_order.id,
-          razorpay_payment_id: `pay_mock_${Date.now()}`,
-          razorpay_signature: "mock_signature",
-          payment_method: "RAZORPAY",
-          order_id: orderId
-        });
+      if (pOrder?.is_configured && pOrder?.razorpay_order?.id && typeof window !== "undefined" && window.Razorpay) {
+        const options = {
+          key: pOrder.key_id,
+          amount: pOrder.razorpay_order.amount,
+          currency: pOrder.razorpay_order.currency,
+          name: "HunarHub Marketplace",
+          description: `Order #${orderId}`,
+          order_id: pOrder.razorpay_order.id,
+          handler: async (response) => {
+            try {
+              await api.verifyPayment({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                payment_method: "ONLINE",
+                order_id: orderId
+              });
+              showToast("success", "Online payment verified successfully! Order confirmed.");
+              fetchData();
+            } catch (err) {
+              showToast("error", err.message || "Payment verification failed");
+            }
+          },
+          theme: { color: "#d97706" }
+        };
+        const rzp = new window.Razorpay(options);
+        rzp.open();
       } else {
         await api.verifyPayment({
           payment_method: "DIRECT_UPI",
           order_id: orderId
         });
+        showToast("info", "Order placed with Direct Settlement / Cash on Delivery. Payment status: PENDING settlement.");
+        fetchData();
       }
-      showToast("success", "Payment successful! Order confirmed.");
-      fetchData();
     } catch (err) {
-      showToast("error", err.message || "Payment failed");
+      showToast("error", err.message || "Payment processing failed");
     }
   };
 
   const handlePayServiceRequest = async (srId) => {
     try {
       const pOrder = await api.createPaymentOrder({ service_request_id: srId });
-      if (pOrder?.is_configured && pOrder?.razorpay_order?.id) {
-        await api.verifyPayment({
-          razorpay_order_id: pOrder.razorpay_order.id,
-          razorpay_payment_id: `pay_mock_${Date.now()}`,
-          razorpay_signature: "mock_signature",
-          payment_method: "RAZORPAY",
-          service_request_id: srId
-        });
+      if (pOrder?.is_configured && pOrder?.razorpay_order?.id && typeof window !== "undefined" && window.Razorpay) {
+        const options = {
+          key: pOrder.key_id,
+          amount: pOrder.razorpay_order.amount,
+          currency: pOrder.razorpay_order.currency,
+          name: "HunarHub Marketplace",
+          description: `Service Booking #${srId}`,
+          order_id: pOrder.razorpay_order.id,
+          handler: async (response) => {
+            try {
+              await api.verifyPayment({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                payment_method: "ONLINE",
+                service_request_id: srId
+              });
+              showToast("success", "Online payment verified! Service request is now in progress.");
+              fetchData();
+            } catch (err) {
+              showToast("error", err.message || "Payment verification failed");
+            }
+          },
+          theme: { color: "#d97706" }
+        };
+        const rzp = new window.Razorpay(options);
+        rzp.open();
       } else {
         await api.verifyPayment({
           payment_method: "DIRECT_UPI",
           service_request_id: srId
         });
+        showToast("info", "Service booked with Direct Settlement. Payment status: PENDING settlement with artisan.");
+        fetchData();
       }
-      showToast("success", "Payment successful! Service request is now in progress.");
-      fetchData();
     } catch (err) {
-      showToast("error", err.message || "Payment failed");
+      showToast("error", err.message || "Payment processing failed");
     }
   };
 
@@ -192,6 +233,18 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
           <span>Refresh Data</span>
         </button>
       </div>
+
+      {error && (
+        <div className="glass-panel" style={{ padding: "1.2rem", margin: "1rem 0", border: "1px solid #ef4444", borderRadius: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#f87171" }}>
+            <AlertTriangle size={18} />
+            <span>{error}</span>
+          </div>
+          <button onClick={fetchData} className="btn-secondary" style={{ padding: "0.35rem 0.75rem", fontSize: "0.85rem" }}>
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="portal-tabs-row">
@@ -372,9 +425,13 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
                               <div>
                                 <h5 className="quote-artisan-name">{q.business_name}</h5>
                                 <div className="quote-artisan-meta">
-                                  <span><Star size={14} fill="#f59e0b" color="#f59e0b" style={{ display: "inline" }} /> {q.average_rating || "4.9"} rating</span>
-                                  <span>• {q.experience_years || 5}+ Yrs Exp</span>
-                                  <span>• {q.city || "Mumbai"}</span>
+                                  {Number(q.average_rating) > 0 ? (
+                                    <span><Star size={14} fill="#f59e0b" color="#f59e0b" style={{ display: "inline" }} /> {Number(q.average_rating).toFixed(1)} rating</span>
+                                  ) : (
+                                    <span>New Artisan</span>
+                                  )}
+                                  {q.experience_years ? <span>• {q.experience_years}+ Yrs Exp</span> : null}
+                                  {q.city ? <span>• {q.city}</span> : null}
                                 </div>
                               </div>
 
@@ -454,8 +511,13 @@ export default function CustomerPortal({ onOpenReview, showToast, currentUser })
                       {ord.status}
                     </span>
                     <span className={`badge ${ord.payment_status === "PAID" ? "badge-completed" : "badge-pending"}`}>
-                      {ord.payment_status}
+                      {ord.payment_status === "PAID" ? "PAID" : `Payment: ${ord.payment_status || "PENDING"}`}
                     </span>
+                    {ord.payment_method && (
+                      <span className="badge badge-accepted" style={{ marginLeft: "0.35rem" }}>
+                        {ord.payment_method.replace(/_/g, " ")}
+                      </span>
+                    )}
                   </div>
                   <p className="portal-subtitle">Placed on: {new Date(ord.created_at).toLocaleDateString()}</p>
                 </div>

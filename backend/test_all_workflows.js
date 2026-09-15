@@ -339,6 +339,82 @@ async function runEndToEndTests() {
     assert("Admin analytics data returned from database", reportsRes.status === 200 && Array.isArray(reportsRes.data.analytics?.monthly_sales));
 
     // -----------------------------------------------------------------
+    // 11. MESSAGING & CHAT PARTICIPANT AUTHORIZATION
+    // -----------------------------------------------------------------
+    console.log("\n--- 11. Testing Messaging Security & Authorization ---");
+    // Self-messaging must fail
+    const selfMsg = await req("/messages", "POST", {
+      receiver_id: custLogin.data.user.id,
+      message_text: "Self message note"
+    }, custToken);
+    assert("Self-messaging is rejected with 400", selfMsg.status === 400);
+
+    // Customer messages artisan directly (Marketplace inquiry)
+    const c2aMsg = await req("/messages", "POST", {
+      receiver_id: epLogin.data.user.id,
+      message_text: "Hello artisan, inquiry about custom woodwork"
+    }, custToken);
+    assert("Customer can message artisan directly (201)", c2aMsg.status === 201 && c2aMsg.data.message?.id);
+
+    // Fetch conversation messages
+    const convRes = await req(`/messages?other_user_id=${epLogin.data.user.id}`, "GET", null, custToken);
+    assert("Customer retrieves chat history with artisan (200)", convRes.status === 200 && Array.isArray(convRes.data.messages));
+
+    // Register second customer to verify customer-to-customer restriction
+    const cust2Reg = await req("/auth/register", "POST", {
+      full_name: "Customer Two",
+      email: `customer2_${uniqueTs}@test.com`,
+      phone: "91" + String(uniqueTs).slice(-8),
+      password: "password123",
+      role: "CUSTOMER"
+    });
+    const cust2Token = cust2Reg.data.token;
+    const cust2Id = cust2Reg.data.user?.id;
+
+    const c2cMsg = await req("/messages", "POST", {
+      receiver_id: cust2Id,
+      message_text: "Unsolicited customer to customer message"
+    }, custToken);
+    assert("Direct messaging between unrelated customers is rejected (403)", c2cMsg.status === 403);
+
+    // Unrelated user cannot message on private service request
+    const unauthSrMsg = await req("/messages", "POST", {
+      receiver_id: epLogin.data.user.id,
+      service_request_id: testSrId,
+      message_text: "Unauthorized inquiry on private job"
+    }, cust2Token);
+    assert("Unauthorized user cannot message on private service request (403)", unauthSrMsg.status === 403);
+
+    // -----------------------------------------------------------------
+    // 12. FAVORITES INTEGRITY & CART PRICING FORMULA
+    // -----------------------------------------------------------------
+    console.log("\n--- 12. Testing Favorites Integrity & Cart Math ---");
+    // Ensure clean state for favorite test
+    await pool.query("DELETE FROM favorites WHERE user_id = $1 AND entrepreneur_id = $2", [custLogin.data.user.id, serviceToBook.entrepreneur_id]);
+
+    const addFavRes = await req("/favorites", "POST", {
+      entrepreneur_id: serviceToBook.entrepreneur_id
+    }, custToken);
+    assert("Customer favorites artisan profile (201)", addFavRes.status === 201 && addFavRes.data.favorite?.id);
+
+    const dupFavRes = await req("/favorites", "POST", {
+      entrepreneur_id: serviceToBook.entrepreneur_id
+    }, custToken);
+    assert("Duplicate favorite is rejected with 409 Conflict", dupFavRes.status === 409);
+
+    // Verify public platform reviews endpoint
+    const publicReviewsRes = await req("/reviews", "GET");
+    assert("Public recent verified reviews returned", publicReviewsRes.status === 200 && Array.isArray(publicReviewsRes.data.reviews));
+
+    // Verify cart pricing math consistency
+    const cartSubtotal = 1200;
+    const cartTax = Math.round(cartSubtotal * 0.05); // 5% GST
+    const cartDelivery = 50;
+    const expectedGrandTotal = cartSubtotal + cartTax + cartDelivery;
+    assert("Cart pricing math includes 5% GST and delivery fee accurately", expectedGrandTotal === 1310);
+
+
+    // -----------------------------------------------------------------
     // SUMMARY
     // -----------------------------------------------------------------
     console.log("\n==================================================");

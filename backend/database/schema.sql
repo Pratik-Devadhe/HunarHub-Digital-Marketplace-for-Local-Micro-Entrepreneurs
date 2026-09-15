@@ -1007,6 +1007,18 @@ ON orders(entrepreneur_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_status
 ON order_items(status);
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fav_user_ep
+ON favorites(user_id, entrepreneur_id) WHERE entrepreneur_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fav_user_prod
+ON favorites(user_id, product_id) WHERE product_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_reviews_entrepreneur
+ON reviews(entrepreneur_id);
+
+CREATE INDEX IF NOT EXISTS idx_users_role
+ON users(role);
+
 
 -- ============================================================
 -- 20. SAMPLE CATEGORIES

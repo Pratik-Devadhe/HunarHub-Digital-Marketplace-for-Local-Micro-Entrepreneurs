@@ -5,6 +5,8 @@ const { requireAdmin, requireCustomer, requireEntrepreneur } = require("../middl
 const router = express.Router();
 
 /* Routes are mounted from app.js without /api. */
+// GET / (recent platform-wide verified reviews)
+router.get("/", getReviews);
 // GET entrepreneur/:entrepreneurId
 router.get("/entrepreneur/:entrepreneurId", getReviews);
 // GET product/:productId

@@ -97,14 +97,12 @@ const verifyPayment = async (req, res) => {
     }
 
     const razorpay = getRazorpayInstance();
-    const isDirectPayment =
-      ["DIRECT_UPI", "CASH", "CASH_ON_DELIVERY", "UPI", "DIRECT"].includes(
-        String(payment_method).toUpperCase()
-      ) || !razorpay;
+    const isOnline = String(payment_method).toUpperCase() === "ONLINE" || Boolean(razorpay_order_id);
 
-    let finalTransactionId = razorpay_payment_id;
-
-    if (!isDirectPayment) {
+    if (isOnline) {
+      if (!isRazorpayConfigured()) {
+        throw httpError("Online payment gateway is not configured on this server.", 503);
+      }
       if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
         throw httpError("Payment verification fields (order ID, payment ID, signature) are required", 400);
       }
@@ -114,10 +112,6 @@ const verifyPayment = async (req, res) => {
 
       if (expected !== razorpay_signature) {
         throw httpError("Invalid payment signature", 400);
-      }
-    } else {
-      if (!finalTransactionId) {
-        finalTransactionId = `pay_direct_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
       }
     }
 
@@ -137,18 +131,21 @@ const verifyPayment = async (req, res) => {
         customerId = r.rows[0].customer_id;
       }
 
-      const methodToStore = isDirectPayment ? (payment_method || "DIRECT_UPI") : "RAZORPAY";
+      const paymentStatus = isOnline ? "SUCCESS" : "PENDING";
+      const orderPaymentStatus = isOnline ? "PAID" : "PENDING";
+      const methodToStore = isOnline ? "RAZORPAY" : (payment_method || "CASH_ON_DELIVERY");
+      const finalTransactionId = isOnline ? razorpay_payment_id : (req.body.transaction_ref || null);
 
       const r = await c.query(
         `INSERT INTO payments (order_id, service_request_id, customer_id, amount, payment_method, transaction_id, status, paid_at)
-         VALUES ($1, $2, $3, $4, $5, $6, 'SUCCESS', CURRENT_TIMESTAMP) RETURNING *`,
-        [order_id || null, service_request_id || null, customerId, amount, methodToStore, finalTransactionId]
+         VALUES ($1, $2, $3, $4, $5, $6, $7, ${isOnline ? 'CURRENT_TIMESTAMP' : 'NULL'}) RETURNING *`,
+        [order_id || null, service_request_id || null, customerId, amount, methodToStore, finalTransactionId, paymentStatus]
       );
 
       if (order_id) {
         await c.query(
-          "UPDATE orders SET payment_status = 'PAID', status = CASE WHEN status = 'PENDING' THEN 'CONFIRMED' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
-          [order_id]
+          "UPDATE orders SET payment_status = $1, status = CASE WHEN status = 'PENDING' THEN 'CONFIRMED' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+          [orderPaymentStatus, order_id]
         );
       }
 
@@ -162,7 +159,10 @@ const verifyPayment = async (req, res) => {
       return r.rows[0];
     });
 
-    res.json({ success: true, message: "Payment verified successfully", payment });
+    const msg = isOnline
+      ? "Payment verified successfully"
+      : "Order placed with Cash on Delivery / Direct Settlement. Payment pending upon fulfillment.";
+    res.json({ success: true, message: msg, payment });
   } catch (e) {
     sendError(res, e);
   }

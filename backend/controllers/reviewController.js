@@ -3,15 +3,24 @@ const { httpError, sendError, id } = require("../utils/http");
 
 const getReviews = async (req, res) => {
   try {
-    const field = req.params.entrepreneurId ? "r.entrepreneur_id" : "r.product_id";
-    const value = id(req.params.entrepreneurId || req.params.productId);
+    const field = req.params.entrepreneurId ? "r.entrepreneur_id" : req.params.productId ? "r.product_id" : null;
+    const value = req.params.entrepreneurId ? id(req.params.entrepreneurId) : req.params.productId ? id(req.params.productId) : null;
+    let query = `
+      SELECT r.*, u.full_name as customer_name, u.profile_image as customer_image,
+             ep.business_name, ep.city as artisan_city
+      FROM reviews r
+      JOIN users u ON u.id = r.customer_id
+      LEFT JOIN entrepreneur_profiles ep ON ep.id = r.entrepreneur_id
+    `;
+    const params = [];
+    if (field && value) {
+      query += ` WHERE ${field} = $1 ORDER BY r.created_at DESC`;
+      params.push(value);
+    } else {
+      query += ` ORDER BY r.created_at DESC LIMIT 10`;
+    }
     const rows = await withTransaction(async (c) =>
-      (await c.query(
-        `SELECT r.*, u.full_name as customer_name, u.profile_image as customer_image
-         FROM reviews r JOIN users u ON u.id = r.customer_id
-         WHERE ${field} = $1 ORDER BY r.created_at DESC`,
-        [value]
-      )).rows
+      (await c.query(query, params)).rows
     );
     res.json({ success: true, reviews: rows });
   } catch (e) {

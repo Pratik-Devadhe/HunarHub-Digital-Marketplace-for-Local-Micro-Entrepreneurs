@@ -7,6 +7,7 @@ export default function AuthModal({ isOpen, initialRole, isSignUpView, onClose, 
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    confirm_password: "",
     full_name: "",
     phone: "",
     role: initialRole || "CUSTOMER",
@@ -15,9 +16,11 @@ export default function AuthModal({ isOpen, initialRole, isSignUpView, onClose, 
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
     if (isOpen) {
+      setAuthError("");
       if (initialRole) setFormData((prev) => ({ ...prev, role: initialRole }));
       if (typeof isSignUpView === "boolean") setIsLoginView(!isSignUpView);
     }
@@ -37,8 +40,11 @@ export default function AuthModal({ isOpen, initialRole, isSignUpView, onClose, 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setAuthError("");
+
     if (!isLoginView) {
       if (!formData.full_name || formData.full_name.trim().length < 2) {
+        setAuthError("Full name must be at least 2 characters");
         showToast("error", "Full name must be at least 2 characters");
         return;
       }
@@ -51,18 +57,27 @@ export default function AuthModal({ isOpen, initialRole, isSignUpView, onClose, 
         : rawDigits;
 
       if (!/^[6-9]\d{9}$/.test(phoneDigits)) {
-        showToast("error", "Please enter a valid 10-digit Indian mobile number (e.g. 9876543210)");
+        setAuthError("Please enter a valid 10-digit Indian mobile number (e.g. 9876543210)");
+        showToast("error", "Please enter a valid 10-digit Indian mobile number");
         return;
       }
 
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!formData.email || !emailRegex.test(formData.email.trim())) {
-        showToast("error", "Please provide a valid email address");
+        setAuthError("Please enter a valid email address");
+        showToast("error", "Please enter a valid email address");
         return;
       }
 
       if (!formData.password || formData.password.length < 6) {
-        showToast("error", "Password must be at least 6 characters");
+        setAuthError("Password must contain at least 6 characters");
+        showToast("error", "Password must contain at least 6 characters");
+        return;
+      }
+
+      if (formData.password !== formData.confirm_password) {
+        setAuthError("Passwords do not match. Please verify your password.");
+        showToast("error", "Passwords do not match");
         return;
       }
     }
@@ -92,7 +107,19 @@ export default function AuthModal({ isOpen, initialRole, isSignUpView, onClose, 
       }
       onClose();
     } catch (err) {
-      showToast("error", err.message || "Authentication failed. Please try again.");
+      let rawMsg = err.message || "Authentication failed. Please try again.";
+      let userMsg = rawMsg;
+      if (rawMsg.includes("already exists") || rawMsg.includes("users_email_key")) {
+        userMsg = "Email already registered. Please sign in instead.";
+      } else if (rawMsg.includes("users_phone_key") || rawMsg.includes("phone number is already registered")) {
+        userMsg = "This phone number is already registered. Please sign in or use another number.";
+      } else if (rawMsg.includes("Invalid email or password")) {
+        userMsg = "Invalid email or password. Please check your credentials.";
+      } else if (rawMsg.includes("Network") || rawMsg.includes("Failed to fetch")) {
+        userMsg = "Unable to reach server. Please check your internet connection.";
+      }
+      setAuthError(userMsg);
+      showToast("error", userMsg);
     } finally {
       setLoading(false);
     }
@@ -125,6 +152,12 @@ export default function AuthModal({ isOpen, initialRole, isSignUpView, onClose, 
             <X size={20} />
           </button>
         </div>
+
+        {authError && (
+          <div className="auth-error-banner" style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid #ef4444", color: "#fca5a5", padding: "0.6rem 0.85rem", borderRadius: "0.5rem", fontSize: "0.85rem", marginBottom: "1rem" }}>
+            {authError}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="auth-form">
           {!isLoginView && (
@@ -262,7 +295,10 @@ export default function AuthModal({ isOpen, initialRole, isSignUpView, onClose, 
                 disabled={loading}
                 placeholder="••••••••"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, password: e.target.value });
+                  if (authError) setAuthError("");
+                }}
                 className="input-with-icon password-input"
               />
               <button
@@ -277,6 +313,27 @@ export default function AuthModal({ isOpen, initialRole, isSignUpView, onClose, 
             </div>
           </div>
 
+          {!isLoginView && (
+            <div>
+              <label className="field-label">Confirm Password</label>
+              <div className="input-field-wrap password-field-wrap">
+                <Lock className="field-icon" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  disabled={loading}
+                  placeholder="••••••••"
+                  value={formData.confirm_password}
+                  onChange={(e) => {
+                    setFormData({ ...formData, confirm_password: e.target.value });
+                    if (authError) setAuthError("");
+                  }}
+                  className="input-with-icon password-input"
+                />
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -289,7 +346,10 @@ export default function AuthModal({ isOpen, initialRole, isSignUpView, onClose, 
         <div className="auth-toggle-row">
           {isLoginView ? "Don't have an account?" : "Already have an account?"}{" "}
           <button
-            onClick={() => setIsLoginView(!isLoginView)}
+            onClick={() => {
+              setIsLoginView(!isLoginView);
+              setAuthError("");
+            }}
             className="auth-toggle-link"
             type="button"
           >

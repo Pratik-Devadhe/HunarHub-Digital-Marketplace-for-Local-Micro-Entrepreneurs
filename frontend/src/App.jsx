@@ -34,7 +34,22 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   // Cart & Modal State
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem("hunarhub_cart");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("hunarhub_cart", JSON.stringify(cartItems));
+    } catch (e) {
+      console.error("Failed to save cart to localStorage", e);
+    }
+  }, [cartItems]);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authModalOptions, setAuthModalOptions] = useState({ isSignUp: false, role: "CUSTOMER" });
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -248,6 +263,9 @@ export default function App() {
                 onBookService={handleBookService}
                 onOpenQuoteWizard={handleOpenQuoteWizard}
                 onAddToCart={handleAddToCart}
+                onOpenAuth={handleOpenAuth}
+                showToast={showToast}
+                currentUser={user}
                 loading={loading}
               />
             }
@@ -303,12 +321,22 @@ export default function App() {
           <Route
             path="/entrepreneur"
             element={
-              user ? (
+              user && (user.role === "ENTREPRENEUR" || user.role === "ADMIN") ? (
                 <EntrepreneurPortal
                   user={user}
                   showToast={showToast}
                   onRefreshUser={loadInitialData}
                 />
+              ) : user ? (
+                <div className="empty-search-box" style={{ margin: "4rem auto", maxWidth: "500px" }}>
+                  <ShieldAlert style={{ width: "2.5rem", height: "2.5rem", color: "#F59E0B" }} />
+                  <h3>Entrepreneur Access Required</h3>
+                  <p>Your current account is registered as a Customer. To access the artisan dashboard, list your services, and receive customer leads, please register or sign in with an Entrepreneur account.</p>
+                  <button onClick={() => handleOpenAuth({ isSignUp: true, role: "ENTREPRENEUR" })} className="btn-primary">
+                    <LogIn style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} />
+                    <span>Create Entrepreneur Account</span>
+                  </button>
+                </div>
               ) : (
                 <div className="empty-search-box" style={{ margin: "4rem auto", maxWidth: "500px" }}>
                   <ShieldAlert style={{ width: "2.5rem", height: "2.5rem", color: "#F59E0B" }} />

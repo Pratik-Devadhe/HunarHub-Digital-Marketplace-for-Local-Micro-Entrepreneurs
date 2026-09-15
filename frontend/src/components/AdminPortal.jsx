@@ -73,6 +73,7 @@ export default function AdminPortal({ showToast }) {
   const [orderTypeFilter, setOrderTypeFilter] = useState("ALL");
   const [orderStatusFilter, setOrderStatusFilter] = useState("ALL");
   const [orderSearchQuery, setOrderSearchQuery] = useState("");
+  const [error, setError] = useState(null);
 
   /* =========================================================
      FETCH ADMIN DATA
@@ -80,6 +81,7 @@ export default function AdminPortal({ showToast }) {
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
 
     try {
       const [
@@ -92,14 +94,14 @@ export default function AdminPortal({ showToast }) {
         sklRes,
         anlRes,
       ] = await Promise.all([
-        api.getAdminDashboard().catch(() => ({ dashboard: {} })),
-        api.getAdminEntrepreneurs().catch(() => ({ entrepreneurs: [] })),
-        api.getAdminComplaints().catch(() => ({ complaints: [] })),
-        api.getAdminOrders().catch(() => ({ orders: [] })),
-        api.getAdminServiceRequests().catch(() => ({ requests: [] })),
-        api.getCategories().catch(() => ({ categories: [] })),
-        api.getSkills().catch(() => ({ skills: [] })),
-        api.getAdminAnalytics().catch(() => ({ analytics: {} })),
+        api.getAdminDashboard(),
+        api.getAdminEntrepreneurs(),
+        api.getAdminComplaints(),
+        api.getAdminOrders(),
+        api.getAdminServiceRequests(),
+        api.getCategories(),
+        api.getSkills(),
+        api.getAdminAnalytics(),
       ]);
 
       setDashboard(dashRes?.dashboard || {});
@@ -110,11 +112,12 @@ export default function AdminPortal({ showToast }) {
       setCategories(catRes?.categories || []);
       setSkills(sklRes?.skills || []);
       setAnalytics(anlRes?.analytics || {});
-    } catch (error) {
-      console.error("Admin dashboard error:", error);
+    } catch (err) {
+      console.error("Admin dashboard error:", err);
+      setError(err.message || "Failed to fetch admin dashboard");
       showToast?.(
         "error",
-        error.message || "Failed to fetch admin dashboard"
+        err.message || "Failed to fetch admin dashboard"
       );
     } finally {
       setLoading(false);
@@ -531,6 +534,18 @@ export default function AdminPortal({ showToast }) {
           <span>{loading ? "Refreshing..." : "Refresh Data"}</span>
         </button>
       </div>
+
+      {error && (
+        <div className="glass-panel" style={{ padding: "1.2rem", margin: "1.5rem 0", border: "1px solid #ef4444", borderRadius: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#f87171" }}>
+            <AlertTriangle size={18} />
+            <span>{error}</span>
+          </div>
+          <button onClick={fetchData} className="btn-secondary" style={{ padding: "0.35rem 0.75rem", fontSize: "0.85rem" }}>
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* =====================================================
           KPI ANALYTICS
@@ -1356,7 +1371,7 @@ export default function AdminPortal({ showToast }) {
                 <Award size={18} className="metric-icon-amber" />
               </div>
               <div className="metric-value">
-                {analytics.ratings?.average_rating ?? "4.9"} ⭐
+                {analytics.ratings?.average_rating ? `${analytics.ratings.average_rating} ⭐` : "No reviews yet"}
               </div>
               <div className="metric-subtext">
                 Across {analytics.ratings?.total_reviews ?? 0} verified customer reviews

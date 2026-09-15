@@ -45,6 +45,7 @@ export default function Marketplace({
   onBookService,
   onOpenQuoteWizard,
   onAddToCart,
+  onOpenAuth,
   loading: _loading,
   currentUser,
   showToast
@@ -59,16 +60,34 @@ export default function Marketplace({
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [sortBy, setSortBy] = useState("recommended");
   const [heroSearch, setHeroSearch] = useState("");
+  const [recentReviews, setRecentReviews] = useState([]);
 
-  // Load skills
+  // Load skills & recent platform reviews
   useEffect(() => {
     api.getSkills()
       .then((res) => {
         if (res && res.skills) setSkills(res.skills);
       })
       .catch((err) => console.error("Error loading skills in marketplace:", err));
+
+    api.getRecentReviews()
+      .then((res) => {
+        if (res && res.reviews) setRecentReviews(res.reviews);
+      })
+      .catch((err) => console.error("Error loading recent reviews:", err));
   }, []);
   
+  // Prioritize core artisan categories: Cobbler, Potter, Tailor, Artisan, Handicraft, Vendor
+  const priorityKeywords = ["cobbler", "potter", "tailor", "artisan", "handicraft", "vendor"];
+  const sortedCategories = [...categories].sort((a, b) => {
+    const aIdx = priorityKeywords.findIndex((k) => a.name.toLowerCase().includes(k));
+    const bIdx = priorityKeywords.findIndex((k) => b.name.toLowerCase().includes(k));
+    if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+    if (aIdx !== -1) return -1;
+    if (bIdx !== -1) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
   // Modal states
   const [selectedArtisanForProfile, setSelectedArtisanForProfile] = useState(null);
   const [chatPartner, setChatPartner] = useState(null);
@@ -95,7 +114,7 @@ export default function Marketplace({
       const matchesCat = !selectedCategory || String(s.category_id) === String(selectedCategory);
       const sCity = epCityMap[s.entrepreneur_id] || s.city || "";
       const matchesCity = !selectedCity || sCity.toLowerCase() === selectedCity.toLowerCase();
-      const rating = Number(s.average_rating || 4.9);
+      const rating = Number(s.average_rating || 0);
       const matchesRating = !selectedMinRating || rating >= Number(selectedMinRating);
       const matchesSkill = !selectedSkill || String(s.skill_id) === String(selectedSkill) || s.skill_name?.toLowerCase().includes(selectedSkill.toLowerCase());
       const matchesMinPrice = !minPrice || Number(s.price) >= Number(minPrice);
@@ -110,7 +129,7 @@ export default function Marketplace({
     })
     .sort((a, b) => {
       if (sortBy === "price_asc") return Number(a.price) - Number(b.price);
-      if (sortBy === "rating_desc") return Number(b.average_rating || 4.9) - Number(a.average_rating || 4.9);
+      if (sortBy === "rating_desc") return Number(b.average_rating || 0) - Number(a.average_rating || 0);
       return 0;
     });
 
@@ -120,7 +139,7 @@ export default function Marketplace({
       const matchesCat = !selectedCategory || String(p.category_id) === String(selectedCategory);
       const pCity = epCityMap[p.entrepreneur_id] || p.city || "";
       const matchesCity = !selectedCity || pCity.toLowerCase() === selectedCity.toLowerCase();
-      const rating = Number(p.average_rating || 4.9);
+      const rating = Number(p.average_rating || 0);
       const matchesRating = !selectedMinRating || rating >= Number(selectedMinRating);
       const matchesMinPrice = !minPrice || Number(p.price) >= Number(minPrice);
       const matchesMaxPrice = !maxPrice || Number(p.price) <= Number(maxPrice);
@@ -132,7 +151,7 @@ export default function Marketplace({
     })
     .sort((a, b) => {
       if (sortBy === "price_asc") return Number(a.price) - Number(b.price);
-      if (sortBy === "rating_desc") return Number(b.average_rating || 4.9) - Number(a.average_rating || 4.9);
+      if (sortBy === "rating_desc") return Number(b.average_rating || 0) - Number(a.average_rating || 0);
       return 0;
     });
 
@@ -141,7 +160,7 @@ export default function Marketplace({
     .filter((e) => {
       const matchesCat = !selectedCategory || String(e.category_id) === String(selectedCategory);
       const matchesCity = !selectedCity || e.city?.toLowerCase() === selectedCity.toLowerCase();
-      const rating = Number(e.average_rating || 4.9);
+      const rating = Number(e.average_rating || 0);
       const matchesRating = !selectedMinRating || rating >= Number(selectedMinRating);
       const matchesVerified = !verifiedOnly || (e.verification_status === "APPROVED" || e.is_identity_verified || e.is_artisan_verified || e.is_business_verified);
       const matchesSkill = !selectedSkill || (e.bio && e.bio.toLowerCase().includes(selectedSkill.toLowerCase()));
@@ -153,7 +172,7 @@ export default function Marketplace({
       return matchesCat && matchesCity && matchesRating && matchesVerified && matchesSkill && matchesSearch;
     })
     .sort((a, b) => {
-      if (sortBy === "rating_desc") return Number(b.average_rating || 4.9) - Number(a.average_rating || 4.9);
+      if (sortBy === "rating_desc") return Number(b.average_rating || 0) - Number(a.average_rating || 0);
       return 0;
     });
 
@@ -194,8 +213,58 @@ export default function Marketplace({
           </h1>
 
           <p className="sulekha-hero-subtitle">
-            Discover local talent. Support local skills. Create local opportunities. Connect directly with verified Cobblers, Potters (Kumhars), Tailors, Artisans, and Small Vendors with zero commission fees.
+            <strong>Connecting Skills. Creating Opportunities.</strong> HunarHub / HunarSetu is a digital marketplace dedicated to empowering local micro-entrepreneurs — Cobblers, Potters (Kumhars), Tailors, Artisans, and Small Vendors — with zero commission fees and direct customer relationships.
           </p>
+
+          {/* HERO ACTION BUTTONS: FIND LOCAL SKILLS & JOIN AS AN ENTREPRENEUR */}
+          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", margin: "1.25rem 0" }}>
+            <button
+              onClick={() => {
+                document.getElementById("marketplace-catalog")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              style={{
+                background: "linear-gradient(135deg, #d97706, #b45309)",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "10px",
+                padding: "0.85rem 1.6rem",
+                fontWeight: 700,
+                fontSize: "0.95rem",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                cursor: "pointer",
+                boxShadow: "0 4px 12px rgba(217, 119, 6, 0.35)"
+              }}
+            >
+              <Search size={17} />
+              <span>Find Local Skills</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (onOpenAuth) {
+                  onOpenAuth({ isSignUp: true, role: "ENTREPRENEUR" });
+                }
+              }}
+              style={{
+                background: "rgba(255, 255, 255, 0.08)",
+                color: "#f8fafc",
+                border: "1px solid rgba(255, 255, 255, 0.25)",
+                borderRadius: "10px",
+                padding: "0.85rem 1.6rem",
+                fontWeight: 700,
+                fontSize: "0.95rem",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                cursor: "pointer"
+              }}
+            >
+              <Store size={17} color="#fbbf24" />
+              <span>Join as an Entrepreneur</span>
+            </button>
+          </div>
 
           {/* SULEKHA HERO SEARCH & LEAD WIDGET */}
           <div className="sulekha-search-widget">
@@ -277,9 +346,76 @@ export default function Marketplace({
           <div className="hero-image-badge-floating">
             <ShieldCheck className="text-emerald" size={24} />
             <div>
-              <strong>100% Verified Artisans</strong>
-              <span>Fast 15-Min Lead Connect</span>
+              <strong>Verified Micro-Entrepreneurs</strong>
+              <span>Direct Skill-to-Opportunity Platform</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* EXPLANATORY MISSION & VALUE PROPOSITION SECTION */}
+      <div style={{
+        margin: "2.5rem 0",
+        padding: "2rem",
+        background: "rgba(15, 23, 42, 0.5)",
+        borderRadius: "16px",
+        border: "1px solid rgba(255, 255, 255, 0.08)"
+      }}>
+        <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
+          <span style={{ color: "#d97706", fontWeight: 700, fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            The HunarHub Difference
+          </span>
+          <h2 style={{ fontSize: "1.75rem", fontWeight: 800, color: "#ffffff", marginTop: "0.35rem" }}>
+            Direct, Fair & Community-Powered Marketplace
+          </h2>
+          <p style={{ color: "#94a3b8", maxWidth: "680px", margin: "0.5rem auto 0", fontSize: "0.95rem" }}>
+            Built to uplift unorganized skilled labor, give craftsmen their due respect, and provide households transparent access to verified local talents.
+          </p>
+        </div>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          gap: "1.5rem"
+        }}>
+          <div style={{ background: "rgba(30, 41, 59, 0.7)", padding: "1.4rem", borderRadius: "12px", border: "1px solid rgba(255, 255, 255, 0.06)" }}>
+            <div style={{ width: "38px", height: "38px", borderRadius: "8px", background: "rgba(217, 119, 6, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#f59e0b", marginBottom: "0.75rem" }}>
+              <Zap size={20} />
+            </div>
+            <h3 style={{ color: "#ffffff", fontSize: "1.05rem", fontWeight: 700, marginBottom: "0.4rem" }}>What HunarHub Does</h3>
+            <p style={{ color: "#94a3b8", fontSize: "0.88rem", lineHeight: 1.5, margin: 0 }}>
+              Provides a direct digital bridge between skilled neighborhood micro-entrepreneurs and consumers, eliminating parasitic middlemen and predatory commission fees.
+            </p>
+          </div>
+
+          <div style={{ background: "rgba(30, 41, 59, 0.7)", padding: "1.4rem", borderRadius: "12px", border: "1px solid rgba(255, 255, 255, 0.06)" }}>
+            <div style={{ width: "38px", height: "38px", borderRadius: "8px", background: "rgba(16, 185, 129, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#10b981", marginBottom: "0.75rem" }}>
+              <Users size={20} />
+            </div>
+            <h3 style={{ color: "#ffffff", fontSize: "1.05rem", fontWeight: 700, marginBottom: "0.4rem" }}>Who We Help</h3>
+            <p style={{ color: "#94a3b8", fontSize: "0.88rem", lineHeight: 1.5, margin: 0 }}>
+              Cobblers, traditional Kumhars (potters), custom tailors, handcraft artisans, woodworkers, and local street vendors who lack expensive marketing budgets.
+            </p>
+          </div>
+
+          <div style={{ background: "rgba(30, 41, 59, 0.7)", padding: "1.4rem", borderRadius: "12px", border: "1px solid rgba(255, 255, 255, 0.06)" }}>
+            <div style={{ width: "38px", height: "38px", borderRadius: "8px", background: "rgba(6, 182, 212, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#06b6d4", marginBottom: "0.75rem" }}>
+              <Search size={20} />
+            </div>
+            <h3 style={{ color: "#ffffff", fontSize: "1.05rem", fontWeight: 700, marginBottom: "0.4rem" }}>For Conscious Customers</h3>
+            <p style={{ color: "#94a3b8", fontSize: "0.88rem", lineHeight: 1.5, margin: 0 }}>
+              Find verified artisans nearby, request transparent competitive quotes, chat directly, book doorstep repairs, and buy genuine handmade products.
+            </p>
+          </div>
+
+          <div style={{ background: "rgba(30, 41, 59, 0.7)", padding: "1.4rem", borderRadius: "12px", border: "1px solid rgba(255, 255, 255, 0.06)" }}>
+            <div style={{ width: "38px", height: "38px", borderRadius: "8px", background: "rgba(168, 85, 247, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#a855f7", marginBottom: "0.75rem" }}>
+              <Store size={20} />
+            </div>
+            <h3 style={{ color: "#ffffff", fontSize: "1.05rem", fontWeight: 700, marginBottom: "0.4rem" }}>For Micro-Entrepreneurs</h3>
+            <p style={{ color: "#94a3b8", fontSize: "0.88rem", lineHeight: 1.5, margin: 0 }}>
+              Zero registration fees, 0% platform cuts, authentic digital showcase, direct customer leads, and verifiable reputation building in their local communities.
+            </p>
           </div>
         </div>
       </div>
@@ -299,7 +435,7 @@ export default function Marketplace({
         </div>
 
         <div className="categories-cards-grid">
-          {categories.map((cat) => {
+          {sortedCategories.map((cat) => {
             const count = services.filter((s) => String(s.category_id) === String(cat.id)).length;
             const isSelected = selectedCategory === String(cat.id);
             return (
@@ -310,7 +446,7 @@ export default function Marketplace({
               >
                 <div className="category-card-top">
                   <span className="category-emoji-badge"><Award size={20} color="#d97706" /></span>
-                  <span className="category-count-pill">{count > 0 ? `${count}+ Services` : "Verified Experts"}</span>
+                  <span className="category-count-pill">{count > 0 ? `${count}+ Services` : "Local Skills"}</span>
                 </div>
                 <h3 className="category-card-name">{cat.name}</h3>
                 <p className="category-card-desc">{cat.description}</p>
@@ -482,7 +618,7 @@ export default function Marketplace({
       </div>
 
       {/* MAIN CONTENT TABS BAR & VIEW MODE TOGGLE */}
-      <div className="marketplace-tabs-bar">
+      <div className="marketplace-tabs-bar" id="marketplace-catalog">
         <div className="tab-selector-group">
           <button
             onClick={() => setActiveTab("services")}
@@ -542,9 +678,15 @@ export default function Marketplace({
                     {svc.category_name || "Craft Service"}
                   </span>
                   <div className="rating-pill">
-                    <Star className="rating-star-icon" />
-                    <span>{Number(svc.average_rating || 4.9).toFixed(1)}</span>
-                    <span className="reviews-count">({svc.reviews_count || 120})</span>
+                    {Number(svc.average_rating) > 0 ? (
+                      <>
+                        <Star className="rating-star-icon" />
+                        <span>{Number(svc.average_rating).toFixed(1)}</span>
+                        <span className="reviews-count">({svc.total_reviews || svc.reviews_count || 1})</span>
+                      </>
+                    ) : (
+                      <span className="reviews-count">No reviews yet</span>
+                    )}
                   </div>
                 </div>
 
@@ -559,24 +701,30 @@ export default function Marketplace({
                 {/* Expert Profile Banner */}
                 <div className="provider-sub-box">
                   <div className="provider-top-row">
-                    <span className="provider-name">{svc.business_name || "Verified Expert"}</span>
-                    <span className="sulekha-verified-pill">
-                      <ShieldCheck size={12} /> Verified Expert
-                    </span>
+                    <span className="provider-name">{svc.business_name || "Local Artisan"}</span>
+                    {svc.verification_status === "APPROVED" && (
+                      <span className="sulekha-verified-pill">
+                        <ShieldCheck size={12} /> Verified
+                      </span>
+                    )}
                   </div>
                   <div className="provider-meta-row">
                     <span className="meta-item">
                       <MapPin className="meta-icon text-amber" />
-                      <span>{svc.city || "Mumbai"}</span>
+                      <span>{svc.city || "Location not specified"}</span>
                     </span>
-                    <span className="meta-item response-badge">
-                      <Zap size={12} className="text-amber" />
-                      <span>{svc.response_time || "15 mins"}</span>
-                    </span>
-                    <span className="meta-item">
-                      <Clock className="meta-icon" />
-                      <span>~{svc.estimated_duration || 45}m</span>
-                    </span>
+                    {svc.response_time && (
+                      <span className="meta-item response-badge">
+                        <Zap size={12} className="text-amber" />
+                        <span>{svc.response_time}</span>
+                      </span>
+                    )}
+                    {svc.estimated_duration && (
+                      <span className="meta-item">
+                        <Clock className="meta-icon" />
+                        <span>~{svc.estimated_duration}m</span>
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -636,9 +784,11 @@ export default function Marketplace({
                     alt={ep.business_name}
                     className="expert-card-avatar"
                   />
-                  <span className="expert-verified-badge">
-                    <ShieldCheck size={14} /> Verified Artisan
-                  </span>
+                  {ep.verification_status === "APPROVED" && (
+                    <span className="expert-verified-badge">
+                      <ShieldCheck size={14} /> Verified Artisan
+                    </span>
+                  )}
                 </div>
 
                 <div className="expert-card-right">
@@ -648,15 +798,25 @@ export default function Marketplace({
                       <p className="expert-person-name">By {ep.full_name}</p>
                     </div>
                     <div className="rating-pill">
-                      <Star className="rating-star-icon" />
-                      <span>{Number(ep.average_rating || 4.9).toFixed(1)}</span>
+                      {Number(ep.average_rating) > 0 ? (
+                        <>
+                          <Star className="rating-star-icon" />
+                          <span>{Number(ep.average_rating).toFixed(1)}</span>
+                        </>
+                      ) : (
+                        <span className="reviews-count">No reviews yet</span>
+                      )}
                     </div>
                   </div>
 
                   <div className="expert-tags-row">
-                    <span className="expert-tag-item"><MapPin size={12} /> {ep.city || "Mumbai"}</span>
-                    <span className="expert-tag-item"><Award size={12} /> {ep.experience_years || 10}+ Yrs Exp</span>
-                    <span className="expert-tag-item"><Zap size={12} /> {ep.response_time || "15 mins"}</span>
+                    <span className="expert-tag-item"><MapPin size={12} /> {ep.city || "Location not specified"}</span>
+                    {ep.experience_years ? (
+                      <span className="expert-tag-item"><Award size={12} /> {ep.experience_years}+ Yrs Exp</span>
+                    ) : null}
+                    {ep.response_time ? (
+                      <span className="expert-tag-item"><Zap size={12} /> {ep.response_time}</span>
+                    ) : null}
                   </div>
 
                   <p className="expert-bio">{ep.bio}</p>
@@ -841,62 +1001,42 @@ export default function Marketplace({
         <div className="section-header-row">
           <div>
             <h2 className="section-title">Verified Customer Reviews</h2>
-            <p className="section-subtitle">Real feedback from satisfied customers who booked local artisans on HunarHub.</p>
+            <p className="section-subtitle">Authentic feedback from customers who booked services or ordered products from local artisans on HunarHub.</p>
           </div>
         </div>
 
-        <div className="reviews-cards-grid">
-          <div className="review-card-box">
-            <div className="review-card-header">
-              <strong>Priya Sharma</strong>
-              <span className="review-city">Pune</span>
-            </div>
-            <div className="review-stars">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={14} className="star-filled" />
-              ))}
-            </div>
-            <span className="review-service-tag">Designer Blouse Alteration</span>
-            <p className="review-comment">
-              "Found Ramesh Tailors on HunarHub. They fixed my wedding blouse fitting in just 2 hours! Excellent craft and polite behavior."
-            </p>
-            <div className="review-expert-ref">Artisan: Ramesh Tailors</div>
+        {recentReviews && recentReviews.length > 0 ? (
+          <div className="reviews-cards-grid">
+            {recentReviews.map((rev) => (
+              <div key={rev.id} className="review-card-box">
+                <div className="review-card-header">
+                  <strong>{rev.customer_name || "Verified Customer"}</strong>
+                  {rev.artisan_city && <span className="review-city">{rev.artisan_city}</span>}
+                </div>
+                <div className="review-stars">
+                  {[...Array(Math.min(5, Math.max(1, Math.round(Number(rev.rating) || 5))))].map((_, i) => (
+                    <Star key={i} size={14} className="star-filled" />
+                  ))}
+                </div>
+                {rev.business_name && (
+                  <span className="review-service-tag">{rev.business_name}</span>
+                )}
+                <p className="review-comment">"{rev.comment || "Great craftsmanship and transparent service."}"</p>
+                <div className="review-expert-ref">Verified Transaction</div>
+              </div>
+            ))}
           </div>
-
-          <div className="review-card-box">
-            <div className="review-card-header">
-              <strong>Amit Varma</strong>
-              <span className="review-city">Mumbai</span>
-            </div>
-            <div className="review-stars">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={14} className="star-filled" />
-              ))}
-            </div>
-            <span className="review-service-tag">Leather Boot Resoling</span>
-            <p className="review-comment">
-              "My formal leather shoes had worn-out soles. Precision Leather Works resoled them with genuine rubber soles at a fraction of showroom price."
+        ) : (
+          <div style={{ textAlign: "center", padding: "3rem 1.5rem", background: "rgba(15, 23, 42, 0.4)", borderRadius: "16px", border: "1px dashed rgba(255, 255, 255, 0.15)", margin: "1rem 0" }}>
+            <MessageSquareQuote size={40} color="#d97706" style={{ margin: "0 auto 1rem", opacity: 0.8 }} />
+            <h3 style={{ color: "#ffffff", fontSize: "1.2rem", fontWeight: 700, marginBottom: "0.5rem" }}>
+              Authentic, Verified Reviews
+            </h3>
+            <p style={{ color: "#94a3b8", maxWidth: "560px", margin: "0 auto", fontSize: "0.95rem", lineHeight: 1.6 }}>
+              Reviews on HunarHub are submitted exclusively by customers following verified, completed jobs and orders. Book a local artisan today to share the first review!
             </p>
-            <div className="review-expert-ref">Artisan: Precision Leather Works</div>
           </div>
-
-          <div className="review-card-box">
-            <div className="review-card-header">
-              <strong>Sneha Kulkarni</strong>
-              <span className="review-city">Bengaluru</span>
-            </div>
-            <div className="review-stars">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={14} className="star-filled" />
-              ))}
-            </div>
-            <span className="review-service-tag">Handcrafted Earthen Matkas</span>
-            <p className="review-comment">
-              "Ordered beautiful terracotta clay pots for summer. Delivered safely with zero damage. Superb natural cooling."
-            </p>
-            <div className="review-expert-ref">Artisan: ClayCraft Artisans</div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* BECOME AN ARTISAN PARTNER BANNER */}
@@ -907,14 +1047,43 @@ export default function Marketplace({
           </span>
           <h2>Are you a Local Micro-Entrepreneur or Artisan?</h2>
           <p>
-            Join over 1,500+ verified cobblers, tailors, potters, appliance technicians, and carpenters receiving daily customer service leads across India. Zero hidden charges!
+            Grow your trade with HunarHub. List your skills or handcrafted goods with 0% platform commission, receive direct customer leads in your city, and build a verified digital reputation.
           </p>
+
+          {/* Real Platform Metrics */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "1rem", margin: "1.5rem 0" }}>
+            <div style={{ background: "rgba(255, 255, 255, 0.08)", padding: "1rem", borderRadius: "10px", textAlign: "center" }}>
+              <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#f59e0b" }}>{entrepreneurs.length}</div>
+              <div style={{ fontSize: "0.82rem", color: "#e2e8f0" }}>Active Artisans</div>
+            </div>
+            <div style={{ background: "rgba(255, 255, 255, 0.08)", padding: "1rem", borderRadius: "10px", textAlign: "center" }}>
+              <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#f59e0b" }}>{categories.length}</div>
+              <div style={{ fontSize: "0.82rem", color: "#e2e8f0" }}>Specialized Trades</div>
+            </div>
+            <div style={{ background: "rgba(255, 255, 255, 0.08)", padding: "1rem", borderRadius: "10px", textAlign: "center" }}>
+              <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#f59e0b" }}>{services.length}</div>
+              <div style={{ fontSize: "0.82rem", color: "#e2e8f0" }}>Listed Services</div>
+            </div>
+            <div style={{ background: "rgba(255, 255, 255, 0.08)", padding: "1rem", borderRadius: "10px", textAlign: "center" }}>
+              <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#f59e0b" }}>{products.length}</div>
+              <div style={{ fontSize: "0.82rem", color: "#e2e8f0" }}>Handcrafted Goods</div>
+            </div>
+            <div style={{ background: "rgba(255, 255, 255, 0.08)", padding: "1rem", borderRadius: "10px", textAlign: "center" }}>
+              <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#10b981" }}>0%</div>
+              <div style={{ fontSize: "0.82rem", color: "#e2e8f0" }}>Platform Commission</div>
+            </div>
+          </div>
+
           <button
-            onClick={() => onOpenQuoteWizard?.()}
+            onClick={() => {
+              if (onOpenAuth) {
+                onOpenAuth({ isSignUp: true, role: "ENTREPRENEUR" });
+              }
+            }}
             className="btn-partner-cta"
           >
             <Store size={16} />
-            <span>List Your Business FREE</span>
+            <span>Join as an Entrepreneur (Free)</span>
           </button>
         </div>
       </div>
